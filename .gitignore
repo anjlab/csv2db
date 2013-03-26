@@ -1,4 +1,5 @@
 derby.log
+.gradle
 build
 bin
 .classpath
