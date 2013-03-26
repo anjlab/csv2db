@@ -3,6 +3,7 @@ package com.anjlab.csv2db;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -62,6 +63,8 @@ public class ImporterTest
         Configuration config = Configuration.fromJson(
                 "src/test/resources/test-config.json");
         
+        config.getCsvOptions().setEscapeChar((char) 0);
+        
         Importer importer = new Importer(config);
         importer.setAutocloseConnection(false);
         
@@ -78,25 +81,11 @@ public class ImporterTest
         
         importer.performImport("src/test/resources/test-data.csv");
         
-        assertRecordCount(connection,
-                Arrays.asList(new Object[] {"! LTD", "08209948", "METROHOUSE 57 PEPPER ROAD", "HUNSLET"},
-                              new Object[] {"!BIG IMPACT GRAPHICS LIMITED", "07382019", "335 ROSDEN HOUSE", "372 OLD STREET"},
-                              new Object[] {"!NFERNO LTD.", "04753368", "FIRST FLOOR THAVIES INN HOUSE 3-4", "HOLBORN CIRCUS"},
-                              new Object[] {"!NSPIRED LTD", "SC421617", "12 BON ACCORD SQUARE", ""},
-                              new Object[] {"!OBAC INSTALLATIONS LIMITED", "07527820", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
-                              new Object[] {"!OBAC UK LIMITED", "07687209", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
-                              new Object[] {"!ST MEDIA SOUTHAMPTON LTD", "07904170", "10 NORTHBROOK HOUSE", "FREE STREET, BISHOPS WALTHAM"}));
+        assertRecordCount(connection, getExpectedDataset());
         
         importer.performImport("src/test/resources/test-data.csv");
         
-        assertRecordCount(connection,
-                Arrays.asList(new Object[] {"! LTD", "08209948", "METROHOUSE 57 PEPPER ROAD", "HUNSLET"},
-                              new Object[] {"!BIG IMPACT GRAPHICS LIMITED", "07382019", "335 ROSDEN HOUSE", "372 OLD STREET"},
-                              new Object[] {"!NFERNO LTD.", "04753368", "FIRST FLOOR THAVIES INN HOUSE 3-4", "HOLBORN CIRCUS"},
-                              new Object[] {"!NSPIRED LTD", "SC421617", "12 BON ACCORD SQUARE", ""},
-                              new Object[] {"!OBAC INSTALLATIONS LIMITED", "07527820", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
-                              new Object[] {"!OBAC UK LIMITED", "07687209", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
-                              new Object[] {"!ST MEDIA SOUTHAMPTON LTD", "07904170", "10 NORTHBROOK HOUSE", "FREE STREET, BISHOPS WALTHAM"}));
+        assertRecordCount(connection, getExpectedDataset());
         
         connection.close();
         
@@ -109,21 +98,24 @@ public class ImporterTest
         
         importer.performImport("src/test/resources/test-data.csv");
         
-        assertRecordCount(connection,
-                Arrays.asList(new Object[] {"! LTD", "08209948", "METROHOUSE 57 PEPPER ROAD", "HUNSLET"},
-                              new Object[] {"!BIG IMPACT GRAPHICS LIMITED", "07382019", "335 ROSDEN HOUSE", "372 OLD STREET"},
-                              new Object[] {"!NFERNO LTD.", "04753368", "FIRST FLOOR THAVIES INN HOUSE 3-4", "HOLBORN CIRCUS"},
-                              new Object[] {"!NSPIRED LTD", "SC421617", "12 BON ACCORD SQUARE", ""},
-                              new Object[] {"!OBAC INSTALLATIONS LIMITED", "07527820", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
-                              new Object[] {"!OBAC UK LIMITED", "07687209", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
-                              new Object[] {"!ST MEDIA SOUTHAMPTON LTD", "07904170", "10 NORTHBROOK HOUSE", "FREE STREET, BISHOPS WALTHAM"},
-                              new Object[] {"! LTD", "08209948", "METROHOUSE 57 PEPPER ROAD", "HUNSLET"},
-                              new Object[] {"!BIG IMPACT GRAPHICS LIMITED", "07382019", "335 ROSDEN HOUSE", "372 OLD STREET"},
-                              new Object[] {"!NFERNO LTD.", "04753368", "FIRST FLOOR THAVIES INN HOUSE 3-4", "HOLBORN CIRCUS"},
-                              new Object[] {"!NSPIRED LTD", "SC421617", "12 BON ACCORD SQUARE", ""},
-                              new Object[] {"!OBAC INSTALLATIONS LIMITED", "07527820", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
-                              new Object[] {"!OBAC UK LIMITED", "07687209", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
-                              new Object[] {"!ST MEDIA SOUTHAMPTON LTD", "07904170", "10 NORTHBROOK HOUSE", "FREE STREET, BISHOPS WALTHAM"}));
+        List<Object[]> expectedDataset = new ArrayList<Object[]>();
+        expectedDataset.addAll(getExpectedDataset());
+        expectedDataset.addAll(getExpectedDataset());
+        assertRecordCount(connection, expectedDataset);
+    }
+
+    private List<Object[]> getExpectedDataset()
+    {
+        return Arrays.asList(new Object[] {"! LTD", "08209948", "METROHOUSE 57 PEPPER ROAD", "HUNSLET"},
+                      new Object[] {"!BIG IMPACT GRAPHICS LIMITED", "07382019", "335 ROSDEN HOUSE", "372 OLD STREET"},
+                      new Object[] {"!NFERNO LTD.", "04753368", "FIRST FLOOR THAVIES INN HOUSE 3-4", "HOLBORN CIRCUS"},
+                      new Object[] {"!NSPIRED LTD", "SC421617", "12 BON ACCORD SQUARE", ""},
+                      new Object[] {"!OBAC INSTALLATIONS LIMITED", "07527820", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
+                      new Object[] {"!OBAC UK LIMITED", "07687209", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD"},
+                      new Object[] {"!ST MEDIA SOUTHAMPTON LTD", "07904170", "10 NORTHBROOK HOUSE", "FREE STREET, BISHOPS WALTHAM"},
+                      new Object[] {"ALJOH B.V.", "SF000899", "ALEXANDER HINSHELWOOD BARR", "\"SHALIMAR\""},
+                      new Object[] {"ALLEGIS SERVICES (INDIA) PRIVATE LIMITED","FC027847","\\54, 1ST MAIN ROAD","3RD PHASE"},
+                      new Object[] {"APS DIRECT LIMITED","05638208","MANOR COURT CHAMBERS \\","126 MANOR COURT ROAD"});
     }
 
     protected void assertRecordCount(Connection connection, List<Object[]> expectedData) throws SQLException
