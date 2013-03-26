@@ -1,0 +1,27 @@
+{
+    "operationMode": "MERGE",
+    "driverClass": "org.apache.derby.jdbc.EmbeddedDriver",
+    "connectionUrl": "jdbc:derby:memory:myDB;create=true",
+    "connectionProperties": {
+        "username": "sa",
+        "password": ""
+    },
+    "targetTable": "companies_house_records",
+    "primaryKeys": [
+        "company_number"
+    ],
+    "columnMappings": {
+        "0": "company_name",
+        "1": "company_number",
+        "4": "company_address_line_1",
+        "5": "company_address_line_2"
+    },
+    "csvOptions": {
+        "separatorChar": ",",
+        "quoteChar": "\"",
+        "escapeChar": "\\",
+        "skipLines": 1,
+        "strictQuotes": false,
+        "ignoreLeadingWhiteSpace": true
+    }
+}

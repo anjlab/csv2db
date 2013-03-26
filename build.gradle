@@ -1,0 +1,49 @@
+allprojects {
+    apply plugin: 'eclipse'
+
+    group = 'com.anjlab'
+    version = '1.0.0'
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.4'
+}
+
+import org.gradle.plugins.ide.eclipse.model.*;
+
+apply plugin: 'java'
+apply plugin: 'maven'
+
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+dependencies {
+    testCompile 'junit:junit:4.8.2'
+    testCompile 'org.apache.derby:derby:10.9.1.0'
+    
+    compile 'net.sf.opencsv:opencsv:2.3'
+    compile 'postgresql:postgresql:9.1-901-1.jdbc4'
+    compile 'commons-cli:commons-cli:1.2'
+    compile 'commons-io:commons-io:2.4'
+    compile 'com.google.code.gson:gson:2.2.2'
+    compile 'org.apache.commons:commons-lang3:3.1'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+task copyDeps(type: Copy) {
+    into "$buildDir/libs/lib"
+    from configurations.runtime
+}
+
+task copyShellScripts(type: Copy) {
+    into "$buildDir/libs"
+    from 'src/main/shell'
+}
+
+jar { dependsOn copyDeps, copyShellScripts }
