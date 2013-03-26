@@ -27,8 +27,8 @@ public class ImporterTest
         Map<Integer, String> columnMappings = new HashMap<Integer, String>();
         columnMappings.put(0, "company_name");
         columnMappings.put(1, "company_number");
-        columnMappings.put(4, "company_address_line_1");
-        columnMappings.put(5, "company_address_line_2");
+        columnMappings.put(4, "address_line_1");
+        columnMappings.put(5, "address_line_2");
         
         config.setColumnMappings(columnMappings);
         
@@ -43,6 +43,7 @@ public class ImporterTest
         
         CSVOptions csvOptions = new CSVOptions();
         csvOptions.setSkipLines(1);
+        csvOptions.setEscapeChar('\b');
         config.setCsvOptions(csvOptions);
         config.setOperationMode(OperationMode.MERGE);
         config.setPrimaryKeys(Arrays.asList("company_number"));
@@ -75,8 +76,8 @@ public class ImporterTest
                       "create table companies_house_records (" +
                           "company_name varchar(160)," +
                           "company_number varchar(8)," +
-                          "company_address_line_1 varchar(300)," +
-                          "company_address_line_2 varchar(300)" +
+                          "address_line_1 varchar(300)," +
+                          "address_line_2 varchar(300)" +
                       ")");
         
         importer.performImport("src/test/resources/test-data.csv");

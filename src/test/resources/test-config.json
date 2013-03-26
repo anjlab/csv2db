@@ -13,13 +13,13 @@
     "columnMappings": {
         "0": "company_name",
         "1": "company_number",
-        "4": "company_address_line_1",
-        "5": "company_address_line_2"
+        "4": "address_line_1",
+        "5": "address_line_2"
     },
     "csvOptions": {
         "separatorChar": ",",
         "quoteChar": "\"",
-        "escapeChar": "\\",
+        "escapeChar": "\b",
         "skipLines": 1,
         "strictQuotes": false,
         "ignoreLeadingWhiteSpace": true
