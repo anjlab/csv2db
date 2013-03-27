@@ -105,7 +105,7 @@ otherwize UPDATE will be performed and data from CSV will overwrite existing dat
 
 "defaultValues" allows providing values for columns that are not in CSV (like in example above with required ```id``` field, whose value should be taken from PostgreSQL sequence).
 
-"batchSize" size of batch (for INSERT operations only). Default value is 100.
+"batchSize" size of INSERT/UPDATE batches. Default value is 100.
 
 "csvOptions" is a set of options supported by http://opencsv.sourceforge.net, here's the defaults:
 

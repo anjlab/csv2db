@@ -21,6 +21,7 @@ import java.util.Properties;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.AutoCloseInputStream;
+import org.apache.commons.lang3.ObjectUtils;
 
 import au.com.bytecode.opencsv.CSVReader;
 
@@ -80,9 +81,9 @@ public class Importer
         }
     }
     
-    public class MergeRecordHandler extends AbstractRecordHandler implements Closeable
+    public class MergeRecordHandler extends AbstractRecordHandler
     {
-        private RecordHandler insertRecordHandler;
+        private AbstractRecordHandler insertRecordHandler;
         
         private PreparedStatement selectStatement;
         private PreparedStatement updateStatement;
@@ -140,14 +141,28 @@ public class Importer
         @Override
         public void close()
         {
-            closeQuietly(selectStatement);
+            try
+            {
+                checkBatchExecution(0);
+                
+                insertRecordHandler.close();
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
+            finally
+            {
+                closeQuietly(selectStatement);
+            }
         }
 
+        private int numberOfStatementsInBatch;
+        
         @Override
         public void handleRecord(Map<String, String> nameValues) throws SQLException
         {
             selectStatement.clearParameters();
-            updateStatement.clearParameters();
             
             int parameterIndex = 1;
             
@@ -164,6 +179,26 @@ public class Importer
             {
                 if (resultSet.next())
                 {
+                    boolean dataChanged = false;
+                    
+                    for (String targetTableColumnName : getOrderedTableColumnNames())
+                    {
+                        Object oldValue = resultSet.getObject(targetTableColumnName);
+                        Object newValue = nameValues.get(targetTableColumnName);
+                        
+                        if (!ObjectUtils.equals(oldValue, newValue))
+                        {
+                            dataChanged = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!dataChanged)
+                    {
+                        //  No need to update the data, because there's no changes
+                        return;
+                    }
+                    
                     //  Perform update
                     parameterIndex = 1;
                     
@@ -181,9 +216,11 @@ public class Importer
                         updateStatement.setObject(parameterIndex++, primaryKeyColumnValue);
                     }
                     
-                    long rowsUpdated = updateStatement.executeUpdate();
+                    numberOfStatementsInBatch++;
                     
-                    assert rowsUpdated == 1;
+                    updateStatement.addBatch();
+                    
+                    checkBatchExecution(config.getBatchSize());
                 }
                 else
                 {
@@ -196,10 +233,22 @@ public class Importer
                 closeQuietly(resultSet);
             }
         }
+        
+        private void checkBatchExecution(int limit) throws SQLException
+        {
+            if (numberOfStatementsInBatch > limit)
+            {
+                updateStatement.executeBatch();
+                
+                updateStatement.clearParameters();
+                
+                numberOfStatementsInBatch = 0;
+            }
+        }
 
     }
 
-    public class InsertRecordHandler extends AbstractRecordHandler implements Closeable
+    public class InsertRecordHandler extends AbstractRecordHandler
     {
         private PreparedStatement insertStatement;
         
@@ -259,16 +308,18 @@ public class Importer
             
             insertStatement.addBatch();
             
-            checkBatchExecution();
+            checkBatchExecution(config.getBatchSize());
         }
 
-        private void checkBatchExecution() throws SQLException
+        private void checkBatchExecution(int limit) throws SQLException
         {
-            if (numberOfStatementsInBatch >= config.getBatchSize())
+            if (numberOfStatementsInBatch > limit)
             {
                 insertStatement.executeBatch();
                 
                 insertStatement.clearParameters();
+                
+                numberOfStatementsInBatch = 0;
             }
         }
         
@@ -277,7 +328,7 @@ public class Importer
         {
             try
             {
-                checkBatchExecution();
+                checkBatchExecution(0);
             }
             catch (SQLException e)
             {
@@ -290,7 +341,7 @@ public class Importer
         }
     }
 
-    public interface RecordHandler
+    public interface RecordHandler extends Closeable
     {
         void handleRecord(Map<String, String> nameValues) throws SQLException;
     }
@@ -311,6 +362,8 @@ public class Importer
     {
         Connection connection = getConnection();
         
+        RecordHandler strategy = null;
+        
         CSVReader reader = null;
         CSVOptions csvOptions = config.getCsvOptions();
         try
@@ -323,7 +376,7 @@ public class Importer
                     csvOptions.isStrictQuotes(),
                     csvOptions.isIgnoreLeadingWhiteSpace());
             
-            RecordHandler strategy = getRecordHandlerStrategy(connection);
+            strategy = getRecordHandlerStrategy(connection);
             
             String[] nextLine;
             while ((nextLine = reader.readNext()) != null)
@@ -346,6 +399,10 @@ public class Importer
         }
         finally
         {
+            if (strategy != null)
+            {
+                strategy.close();
+            }
             if (reader != null)
             {
                 IOUtils.closeQuietly(reader);
