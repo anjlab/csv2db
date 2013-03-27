@@ -16,6 +16,9 @@
         "4": "address_line_1",
         "5": "address_line_2"
     },
+    "defaultValues": {
+        "id": "current_timestamp"
+    },
     "csvOptions": {
         "separatorChar": ",",
         "quoteChar": "\"",

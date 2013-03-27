@@ -69,6 +69,15 @@ public class Importer
             }
             return columnNames;
         }
+        
+        protected List<String> getColumnNamesWithDefaultValues()
+        {
+            List<String> columnNames = new ArrayList<String>();
+            columnNames.addAll(config.getDefaultValues().keySet());
+            Collections.sort(columnNames);
+            
+            return columnNames;
+        }
     }
     
     public class MergeRecordHandler extends AbstractRecordHandler implements Closeable
@@ -203,6 +212,17 @@ public class Importer
             
             StringBuilder valuesClause = new StringBuilder();
             
+            for (String targetTableColumnName : getColumnNamesWithDefaultValues())
+            {
+                if (valuesClause.length() > 0)
+                {
+                    insertClause.append(", ");
+                    valuesClause.append(", ");
+                }
+                insertClause.append(targetTableColumnName);
+                valuesClause.append(config.getDefaultValues().get(targetTableColumnName));
+            }
+
             for (String targetTableColumnName : getOrderedTableColumnNames())
             {
                 if (valuesClause.length() > 0)
@@ -221,11 +241,11 @@ public class Importer
             insertStatement = connection.prepareStatement(insertClause.toString());
         }
 
+        private int numberOfStatementsInBatch;
+        
         @Override
         public void handleRecord(Map<String, String> nameValues) throws SQLException
         {
-            insertStatement.clearParameters();
-            
             int parameterIndex = 1;
             
             for (String targetTableColumnName : getOrderedTableColumnNames())
@@ -235,13 +255,38 @@ public class Importer
                 insertStatement.setObject(parameterIndex++, columnValue);
             }
             
-            insertStatement.execute();
+            numberOfStatementsInBatch++;
+            
+            insertStatement.addBatch();
+            
+            checkBatchExecution();
+        }
+
+        private void checkBatchExecution() throws SQLException
+        {
+            if (numberOfStatementsInBatch >= config.getBatchSize())
+            {
+                insertStatement.executeBatch();
+                
+                insertStatement.clearParameters();
+            }
         }
         
         @Override
         public void close()
         {
-            closeQuietly(insertStatement);
+            try
+            {
+                checkBatchExecution();
+            }
+            catch (SQLException e)
+            {
+                throw new RuntimeException(e);
+            }
+            finally
+            {
+                closeQuietly(insertStatement);
+            }
         }
     }
 

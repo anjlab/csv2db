@@ -18,6 +18,8 @@ import com.google.gson.Gson;
 public class Configuration
 {
 
+    private static final int DEFAULT_BATCH_SIZE = 100;
+
     public enum OperationMode
     {
         INSERT, MERGE
@@ -82,11 +84,6 @@ public class Configuration
         }
     }
 
-    public enum MergeStrategyName
-    {
-        INSERT, MERGE
-    }
-
     private OperationMode operationMode;
     private String driverClass;
     private String connectionUrl;
@@ -98,6 +95,8 @@ public class Configuration
      * Map values are target table column names.
      */
     private Map<Integer, String> columnMappings;
+    private Map<String, String> defaultValues;
+    private int batchSize = DEFAULT_BATCH_SIZE;
     private CSVOptions csvOptions;
     
     public static Configuration fromJson(String filename) throws FileNotFoundException
@@ -195,5 +194,25 @@ public class Configuration
     public void setOperationMode(OperationMode operationMode)
     {
         this.operationMode = operationMode;
+    }
+    
+    public Map<String, String> getDefaultValues()
+    {
+        return defaultValues;
+    }
+    
+    public void setDefaultValues(Map<String, String> defaultValues)
+    {
+        this.defaultValues = defaultValues;
+    }
+    
+    public int getBatchSize()
+    {
+        return batchSize <= 0 ? 1 : batchSize;
+    }
+    
+    public void setBatchSize(int batchSize)
+    {
+        this.batchSize = batchSize;
     }
 }

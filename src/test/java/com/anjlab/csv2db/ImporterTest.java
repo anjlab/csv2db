@@ -49,6 +49,10 @@ public class ImporterTest
         config.setPrimaryKeys(Arrays.asList("company_number"));
         config.setTargetTable("companies_house_records");
         
+        Map<String, String> defaultValues = new HashMap<String, String>();
+        defaultValues.put("id", "current_timestamp");
+        config.setDefaultValues(defaultValues);
+        
         String expectedJson = new Gson().toJson(config);
         
         String actualJson =
@@ -74,6 +78,7 @@ public class ImporterTest
         connection.createStatement()
                   .executeUpdate(
                       "create table companies_house_records (" +
+                          "id timestamp not null," +
                           "company_name varchar(160)," +
                           "company_number varchar(8)," +
                           "address_line_1 varchar(300)," +
@@ -91,6 +96,7 @@ public class ImporterTest
         connection.close();
         
         config.setOperationMode(OperationMode.INSERT);
+        config.setBatchSize(3);
         
         importer = new Importer(config);
         importer.setAutocloseConnection(false);
@@ -129,11 +135,11 @@ public class ImporterTest
         while (resultSet.next())
         {
             int columnCount = resultSet.getMetaData().getColumnCount();
-            for (int i = 1; i <= columnCount; i++)
+            for (int i = 2; i <= columnCount; i++)
             {
                 Object columnValue = resultSet.getObject(i);
                 
-                Assert.assertEquals(expectedData.get(index)[i - 1], columnValue);
+                Assert.assertEquals(expectedData.get(index)[i - 2], columnValue);
             }
             index++;
         }
