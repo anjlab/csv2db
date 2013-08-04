@@ -13,15 +13,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import au.com.bytecode.opencsv.CSVReader;
 
@@ -355,7 +359,34 @@ public class Importer
 
     public void performImport(String filename) throws ClassNotFoundException, SQLException, IOException
     {
-        performImport(new AutoCloseInputStream(new FileInputStream(new File(filename))));
+        //  Support reading ZIP archives
+        if (StringUtils.endsWithIgnoreCase(filename, ".zip"))
+        {
+            ZipFile zipFile = null;
+            try
+            {
+                zipFile = new ZipFile(new File(filename));
+                Enumeration<? extends ZipEntry> entries = zipFile.entries();
+                while (entries.hasMoreElements())
+                {
+                    ZipEntry entry = entries.nextElement();
+                    
+                    performImport(zipFile.getInputStream(entry));
+                }
+            }
+            finally
+            {
+                if (zipFile != null)
+                {
+                    zipFile.close();
+                }
+            }
+        }
+        else
+        {
+            InputStream inputStream = new FileInputStream(new File(filename));
+            performImport(new AutoCloseInputStream(inputStream));
+        }
     }
     
     public void performImport(InputStream input) throws ClassNotFoundException, SQLException, IOException

@@ -109,6 +109,13 @@ public class ImporterTest
         expectedDataset.addAll(getExpectedDataset());
         expectedDataset.addAll(getExpectedDataset());
         assertRecordCount(connection, expectedDataset);
+        
+        //  Test import from ZIP
+        
+        importer.performImport("src/test/resources/test-data.zip");
+        
+        expectedDataset.addAll(getExpectedDataset());
+        assertRecordCount(connection, expectedDataset);
     }
 
     private List<Object[]> getExpectedDataset()
