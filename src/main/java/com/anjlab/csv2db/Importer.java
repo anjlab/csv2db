@@ -75,10 +75,19 @@ public class Importer
             return columnNames;
         }
         
-        protected List<String> getColumnNamesWithDefaultValues()
+        protected List<String> getColumnNamesWithInsertValues()
         {
             List<String> columnNames = new ArrayList<String>();
-            columnNames.addAll(config.getDefaultValues().keySet());
+            columnNames.addAll(config.getInsertValues().keySet());
+            Collections.sort(columnNames);
+            
+            return columnNames;
+        }
+        
+        protected List<String> getColumnNamesWithUpdateValues()
+        {
+            List<String> columnNames = new ArrayList<String>();
+            columnNames.addAll(config.getUpdateValues().keySet());
             Collections.sort(columnNames);
             
             return columnNames;
@@ -119,6 +128,17 @@ public class Importer
             this.selectStatement = connection.prepareStatement(selectClause.toString());
             
             StringBuilder setClause = new StringBuilder();
+            
+            for (String targetTableColumnName : getColumnNamesWithUpdateValues())
+            {
+                if (setClause.length() > 0)
+                {
+                    setClause.append(", ");
+                }
+                setClause.append(targetTableColumnName)
+                         .append(" = ")
+                         .append(config.getUpdateValues().get(targetTableColumnName));
+            }
             
             for (String targetTableColumnName : getOrderedTableColumnNames())
             {
@@ -183,24 +203,27 @@ public class Importer
             {
                 if (resultSet.next())
                 {
-                    boolean dataChanged = false;
-                    
-                    for (String targetTableColumnName : getOrderedTableColumnNames())
+                    if (!config.isForceUpdate())
                     {
-                        Object oldValue = resultSet.getObject(targetTableColumnName);
-                        Object newValue = nameValues.get(targetTableColumnName);
+                        boolean dataChanged = false;
                         
-                        if (!ObjectUtils.equals(oldValue, newValue))
+                        for (String targetTableColumnName : getOrderedTableColumnNames())
                         {
-                            dataChanged = true;
-                            break;
+                            Object oldValue = resultSet.getObject(targetTableColumnName);
+                            Object newValue = nameValues.get(targetTableColumnName);
+                            
+                            if (!ObjectUtils.equals(oldValue, newValue))
+                            {
+                                dataChanged = true;
+                                break;
+                            }
                         }
-                    }
-                    
-                    if (!dataChanged)
-                    {
-                        //  No need to update the data, because there's no changes
-                        return;
+                        
+                        if (!dataChanged)
+                        {
+                            //  No need to update the data, because there's no changes
+                            return;
+                        }
                     }
                     
                     //  Perform update
@@ -265,7 +288,7 @@ public class Importer
             
             StringBuilder valuesClause = new StringBuilder();
             
-            for (String targetTableColumnName : getColumnNamesWithDefaultValues())
+            for (String targetTableColumnName : getColumnNamesWithInsertValues())
             {
                 if (valuesClause.length() > 0)
                 {
@@ -273,7 +296,7 @@ public class Importer
                     valuesClause.append(", ");
                 }
                 insertClause.append(targetTableColumnName);
-                valuesClause.append(config.getDefaultValues().get(targetTableColumnName));
+                valuesClause.append(config.getInsertValues().get(targetTableColumnName));
             }
 
             for (String targetTableColumnName : getOrderedTableColumnNames())

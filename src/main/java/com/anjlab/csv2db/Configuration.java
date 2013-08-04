@@ -95,9 +95,11 @@ public class Configuration
      * Map values are target table column names.
      */
     private Map<Integer, String> columnMappings;
-    private Map<String, String> defaultValues;
+    private Map<String, String> insertValues;
+    private Map<String, String> updateValues;
     private int batchSize = DEFAULT_BATCH_SIZE;
     private CSVOptions csvOptions;
+    private boolean forceUpdate;
     
     public static Configuration fromJson(String filename) throws FileNotFoundException
     {
@@ -196,14 +198,24 @@ public class Configuration
         this.operationMode = operationMode;
     }
     
-    public Map<String, String> getDefaultValues()
+    public Map<String, String> getInsertValues()
     {
-        return defaultValues;
+        return insertValues;
     }
     
-    public void setDefaultValues(Map<String, String> defaultValues)
+    public void setInsertValues(Map<String, String> insertValues)
     {
-        this.defaultValues = defaultValues;
+        this.insertValues = insertValues;
+    }
+    
+    public Map<String, String> getUpdateValues()
+    {
+        return updateValues;
+    }
+    
+    public void setUpdateValues(Map<String, String> updateValues)
+    {
+        this.updateValues = updateValues;
     }
     
     public int getBatchSize()
@@ -214,5 +226,15 @@ public class Configuration
     public void setBatchSize(int batchSize)
     {
         this.batchSize = batchSize;
+    }
+    
+    public boolean isForceUpdate()
+    {
+        return forceUpdate;
+    }
+    
+    public void setForceUpdate(boolean forceUpdate)
+    {
+        this.forceUpdate = forceUpdate;
     }
 }

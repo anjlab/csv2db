@@ -1,5 +1,6 @@
 {
     "operationMode": "MERGE",
+    "forceUpdate": true,
     "driverClass": "org.apache.derby.jdbc.EmbeddedDriver",
     "connectionUrl": "jdbc:derby:memory:myDB;create=true",
     "connectionProperties": {
@@ -16,8 +17,11 @@
         "4": "address_line_1",
         "5": "address_line_2"
     },
-    "defaultValues": {
+    "insertValues": {
         "id": "current_timestamp"
+    },
+    "updateValues": {
+        "updated_at": "current_date"
     },
     "csvOptions": {
         "separatorChar": ",",
