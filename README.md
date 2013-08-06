@@ -110,7 +110,7 @@ otherwize UPDATE will be performed and data from CSV will overwrite existing dat
 
 `insertValues` and `updateValues` allows providing values for columns that are not in CSV (like in example above with required `id` field, whose value should be taken from PostgreSQL sequence). `insertValues` used in INSERT clauses, `updateValues` used in UPDATE clauses.
 
-`forceUpdate` forces executing UPDATE statements for every row even if the data from CSV for this row are the same that are in the database table. This may be needed if you want to apply values from `updateValues` section. Default value is `false`.
+`forceUpdate` forces executing UPDATE statements for every row even if the data from CSV for this row is the same as in the database table. This may be needed if you want to force applying values from `updateValues` section. Default value is `false`.
 
 `batchSize` size of INSERT/UPDATE batches. Default value is 100.
 
