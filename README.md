@@ -9,11 +9,9 @@ Java Runtime
 chmod +x gradlew
 
 ./gradlew clean build
-
 ```
 
 ## How to Use
-
 
 ``` bash
 chmod +x ./build/libs/run.sh
@@ -63,11 +61,17 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
         "9": "post_code"
     },
     "insertValues": {
-        "id": "nextval('company_id_sequence')",
-        "created_at": "current_timestamp"
+        "id": { "sql": "nextval('company_id_sequence')" },
+        "created_at": { "sql": "current_timestamp" }
     },
     "updateValues": {
-        "updated_at": "current_timestamp"
+        "updated_at": { "sql": "current_timestamp" }
+    },
+    "transform": {
+        "post_code": { "function": "uppercase" }
+    },
+    "scripting": {
+        "functions.js"
     },
     "forceUpdate": false,
     "batchSize": 100,
@@ -79,6 +83,15 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
         "strictQuotes": false,
         "ignoreLeadingWhiteSpace": true
     }
+}
+```
+
+#### functions.js
+```javascript
+"use strict";
+
+function uppercase(columnName, row) {
+    return row[columnName].toUpperCase()
 }
 ```
 
@@ -108,17 +121,73 @@ otherwize UPDATE will be performed and data from CSV will overwrite existing dat
 
 `columnMappings` defines mapping between zero-based column indexes in CSV and target database table column names.
 
-`insertValues` and `updateValues` allows providing values for columns that are not in CSV (like in example above with required `id` field, whose value should be taken from PostgreSQL sequence). `insertValues` used in INSERT clauses, `updateValues` used in UPDATE clauses.
+`insertValues` and `updateValues` allows providing values for columns that are not in CSV (like in example above with required `id` field, whose value should be taken from PostgreSQL sequence). `insertValues` used in INSERT clauses, `updateValues` used in UPDATE clauses. See <a href="#value-definitions">Value Definitions</a>.
+
+`transform` defines transformation rules for imported data. Right now you can define only one transformation for each column. See <a href="#value-definitions">Value Definitions</a>. Transformations only applied for CSV data and not for the columns defined in `insertValues` and `updateValues`
+
+`scripting` defines list of JavaScript file names. The file names are relative to location of the configuration file. You can define your JavaScript functions in these files and reference them from <a href="#value-definitions">Value Definitions</a>.
 
 `forceUpdate` forces executing UPDATE statements for every row even if the data from CSV for this row is the same as in the database table. This may be needed if you want to force applying values from `updateValues` section. Default value is `false`.
 
 `batchSize` size of INSERT/UPDATE batches. Default value is 100.
 
 `csvOptions` is a set of options supported by http://opencsv.sourceforge.net, here's the defaults:
+``` json
+{
+    "separatorChar": ",",
+    "quoteChar": "\"",
+    "escapeChar": "\\",
+    "skipLines": 0,
+    "strictQuotes": false,
+    "ignoreLeadingWhiteSpace": true
+}
+```
 
-	- "separatorChar": ",",
-    - "quoteChar": "\"",
-    - "escapeChar": "\\",
-    - "skipLines": 0,
-    - "strictQuotes": false,
-    - "ignoreLeadingWhiteSpace": true
+#### Value Definitions
+
+Value definitions used to define column values in the `insertValues`, `updateValues` and `transform` blocks.
+
+Value definition may be one of:
+  - Constant
+  - SQL expression
+  - JavaScript function reference
+
+##### Constant
+
+Constant value definitions are JSON primitives. Use this when you want the same value for all rows of the column:
+```json
+{
+    "insertValues": {
+        "data_source": "CompaniesHouse"
+    }
+}
+```
+
+##### SQL expression
+
+Result of SQL expression value definition becomes a part of SQL query, in contrast to "Constants" and "JavaScript function references" whose values becomes SQL query parameters.
+```json
+{
+    "insertValues": {
+        "id": { "sql": "nextval('company_id_sequence')" }
+    }
+}
+```
+SQL expressions are only allowed to be used for `insertValues` and `updateValues`. This is due to performance issues, because INSERT and UPDATE clauses prepared only once and then reused for import of every row.
+
+##### JavaScript function reference
+
+You can reference one of the functions that declared in JavaScript files from `scripting` block:
+```json
+{
+    "transform": {
+        "post_code": { "function": "uppercase" }
+    }
+}
+```
+
+Every function will accept two arguments:
+  - `columnName` -- name of the column for which this function should produce a value, and
+  - `row` -- JSON object representing key-value pairs of currently imported CSV row.
+
+If the function referenced from context of `insertValues` or `updateValues` then `row` argument will be `null`.
