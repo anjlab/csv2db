@@ -13,11 +13,11 @@ import java.util.Map;
 
 import junit.framework.Assert;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 
 import com.anjlab.csv2db.Configuration.CSVOptions;
 import com.anjlab.csv2db.Configuration.OperationMode;
-import com.google.gson.Gson;
 
 public class ImporterTest
 {
@@ -53,19 +53,17 @@ public class ImporterTest
         config.setPrimaryKeys(Arrays.asList("company_number"));
         config.setTargetTable("companies_house_records");
         
-        Map<String, String> insertValues = new HashMap<String, String>();
-        insertValues.put("id", "current_timestamp");
+        Map<String, ValueDefinition> insertValues = new HashMap<String, ValueDefinition>();
+        insertValues.put("id", new SqlLiteral("current_timestamp"));
         config.setInsertValues(insertValues);
         
-        Map<String, String> updateValues = new HashMap<String, String>();
-        updateValues.put("updated_at", "current_date");
+        Map<String, ValueDefinition> updateValues = new HashMap<String, ValueDefinition>();
+        updateValues.put("updated_at", new SqlLiteral("current_date"));
         config.setUpdateValues(updateValues);
         
-        String expectedJson = new Gson().toJson(config);
+        String expectedJson = config.toJson();
         
-        String actualJson =
-                new Gson().toJson(
-                        Configuration.fromJson("src/test/resources/test-config.json"));
+        String actualJson = Configuration.fromJson("src/test/resources/test-config.json").toJson();
         
         Assert.assertEquals(expectedJson, actualJson);
     }
@@ -78,7 +76,7 @@ public class ImporterTest
         
         config.getCsvOptions().setEscapeChar((char) 0);
         
-        Importer importer = new Importer(config);
+        Importer importer = new Importer(config, new SimpleFileResolver("src/test/resources"));
         importer.setAutocloseConnection(false);
         
         Connection connection = importer.getConnection();
@@ -109,7 +107,7 @@ public class ImporterTest
         config.setOperationMode(OperationMode.INSERT);
         config.setBatchSize(3);
         
-        importer = new Importer(config);
+        importer = new Importer(config, new SimpleFileResolver("src/test/resources"));
         importer.setAutocloseConnection(false);
         
         connection = importer.getConnection();
@@ -178,5 +176,55 @@ public class ImporterTest
             index++;
         }
         resultSet.close();
+    }
+    
+    @Test
+    public void testImportWithScripting() throws Exception
+    {
+        Configuration config = Configuration.fromJson(
+                "src/test/resources/test-config-with-scripting.json");
+        
+        config.getCsvOptions().setEscapeChar((char) 0);
+        
+        Importer importer = new Importer(config, new SimpleFileResolver("src/test/resources"));
+        importer.setAutocloseConnection(false);
+        
+        Connection connection = importer.getConnection();
+        
+        try
+        {
+            connection.createStatement()
+                      .executeUpdate("drop table companies_house_records");
+        }
+        catch (SQLException e)
+        {
+            //  Ignore
+        }
+        
+        connection.createStatement()
+                  .executeUpdate(
+                      "create table companies_house_records (" +
+                          "id timestamp not null," +
+                          "company_name varchar(160)," +
+                          "company_number varchar(8)," +
+                          "generated_value varchar(8)" +
+                      ")");
+        
+        importer.performImport("src/test/resources/test-data.csv");
+        
+        List<Object[]> dataset = getExpectedDataset(false);
+        
+        List<Object[]> expectedData = new ArrayList<Object[]>();
+        for (Object[] row : dataset)
+        {
+            expectedData.add(new Object[] {
+                    row[0].toString().toLowerCase(),
+                    row[1].toString(),
+                    StringUtils.reverse(row[1].toString())});
+        }
+        
+        assertRecordCount(connection, expectedData);
+        
+        connection.close();
     }
 }

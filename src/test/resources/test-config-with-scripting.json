@@ -13,15 +13,17 @@
     ],
     "columnMappings": {
         "0": "company_name",
-        "1": "company_number",
-        "4": "address_line_1",
-        "5": "address_line_2"
+        "1": "company_number"
     },
     "insertValues": {
-        "id": { "sql": "current_timestamp" }
+        "id": { "sql": "current_timestamp" },
+        "generated_value": { "function": "reverseCompanyNumber" }
     },
-    "updateValues": {
-        "updated_at": { "sql": "current_date" }
+    "scripting": [
+        "test-functions.js"
+    ],
+    "transform": {
+        "company_name": { "function": "lowercase" }
     },
     "csvOptions": {
         "separatorChar": ",",

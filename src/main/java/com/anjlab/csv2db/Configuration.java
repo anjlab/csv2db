@@ -14,6 +14,7 @@ import au.com.bytecode.opencsv.CSVParser;
 import au.com.bytecode.opencsv.CSVReader;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class Configuration
 {
@@ -95,8 +96,10 @@ public class Configuration
      * Map values are target table column names.
      */
     private Map<Integer, String> columnMappings;
-    private Map<String, String> insertValues;
-    private Map<String, String> updateValues;
+    private Map<String, ValueDefinition> insertValues;
+    private Map<String, ValueDefinition> updateValues;
+    private Map<String, ValueDefinition> transform;
+    private List<String> scripting;
     private int batchSize = DEFAULT_BATCH_SIZE;
     private CSVOptions csvOptions;
     private boolean forceUpdate;
@@ -108,7 +111,7 @@ public class Configuration
     
     public static Configuration fromJson(InputStream input)
     {
-        Configuration config = new Gson().fromJson(new InputStreamReader(input), Configuration.class);
+        Configuration config = createGson().fromJson(new InputStreamReader(input), Configuration.class);
         
         if (config.getCsvOptions() == null)
         {
@@ -116,6 +119,19 @@ public class Configuration
         }
         
         return config;
+    }
+    
+    public String toJson()
+    {
+        return createGson().toJson(this);
+    }
+    
+    private static Gson createGson()
+    {
+        GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.registerTypeAdapter(ValueDefinition.class, new ValueDefinitionAdapter());
+        Gson gson = gsonBuilder.create();
+        return gson;
     }
 
     public String getDriverClass()
@@ -198,24 +214,44 @@ public class Configuration
         this.operationMode = operationMode;
     }
     
-    public Map<String, String> getInsertValues()
+    public Map<String, ValueDefinition> getInsertValues()
     {
         return insertValues;
     }
     
-    public void setInsertValues(Map<String, String> insertValues)
+    public void setInsertValues(Map<String, ValueDefinition> insertValues)
     {
         this.insertValues = insertValues;
     }
     
-    public Map<String, String> getUpdateValues()
+    public Map<String, ValueDefinition> getUpdateValues()
     {
         return updateValues;
     }
     
-    public void setUpdateValues(Map<String, String> updateValues)
+    public void setUpdateValues(Map<String, ValueDefinition> updateValues)
     {
         this.updateValues = updateValues;
+    }
+    
+    public Map<String, ValueDefinition> getTransform()
+    {
+        return transform;
+    }
+    
+    public void setTransform(Map<String, ValueDefinition> transform)
+    {
+        this.transform = transform;
+    }
+    
+    public List<String> getScripting()
+    {
+        return scripting;
+    }
+    
+    public void setScripting(List<String> scripting)
+    {
+        this.scripting = scripting;
     }
     
     public int getBatchSize()

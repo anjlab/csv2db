@@ -1,7 +1,10 @@
 package com.anjlab.csv2db;
 
+import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
+
+import javax.script.ScriptException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -13,7 +16,7 @@ import org.apache.commons.cli.PosixParser;
 public class Import
 {
     public static void main(String[] args)
-            throws IOException, ClassNotFoundException, SQLException
+            throws IOException, ClassNotFoundException, SQLException, ScriptException, ConfigurationException
     {
         Options options =
                 new Options()
@@ -48,9 +51,14 @@ public class Import
             return;
         }
         
-        Configuration config = Configuration.fromJson(cmd.getOptionValue("config"));
+        String configFilename = cmd.getOptionValue("config");
         
-        new Importer(config).performImport(cmd.getOptionValue("input"));
+        Configuration config = Configuration.fromJson(configFilename);
+        
+        Importer importer = new Importer(config,
+                new SimpleFileResolver(new File(configFilename).getParentFile()));
+        
+        importer.performImport(cmd.getOptionValue("input"));
     }
 
     private static void printHelp(Options options)
