@@ -70,9 +70,9 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
     "transform": {
         "post_code": { "function": "uppercase" }
     },
-    "scripting": {
+    "scripting": [
         "functions.js"
-    },
+    ],
     "forceUpdate": false,
     "batchSize": 100,
     "csvOptions": {
