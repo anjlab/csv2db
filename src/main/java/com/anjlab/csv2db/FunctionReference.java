@@ -1,6 +1,5 @@
 package com.anjlab.csv2db;
 
-import java.text.MessageFormat;
 import java.util.Map;
 
 import javax.script.ScriptEngine;
@@ -9,7 +8,6 @@ import javax.script.ScriptException;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
 public class FunctionReference implements ValueDefinition
 {
