@@ -2,7 +2,7 @@ allprojects {
     apply plugin: 'eclipse'
 
     group = 'com.anjlab'
-    version = '2.0.0'
+    version = '2.0.1'
 }
 
 task wrapper(type: Wrapper) {
