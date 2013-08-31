@@ -25,12 +25,14 @@ public class FunctionReference implements ValueDefinition
     @Override
     public Object eval(String targetTableColumnName, Map<String, String> nameValues, ScriptEngine scriptEngine)
     {
-        JsonPrimitive columnName = new JsonPrimitive(targetTableColumnName);
-        String row = GSON.toJson(nameValues);
-        String functionCall = MessageFormat.format("{0}({1}, {2})", functionName, columnName, row);
+        StringBuilder functionCall = new StringBuilder();
+        functionCall.append(functionName)
+                    .append("('")
+                    .append(targetTableColumnName).append("',").append(GSON.toJson(nameValues))
+                    .append(')');
         try
         {
-            return scriptEngine.eval(functionCall);
+            return scriptEngine.eval(functionCall.toString());
         }
         catch (ScriptException e)
         {
