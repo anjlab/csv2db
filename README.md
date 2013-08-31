@@ -68,7 +68,8 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
         "updated_at": { "sql": "current_timestamp" }
     },
     "transform": {
-        "post_code": { "function": "uppercase" }
+        "post_code": { "function": "uppercase" },
+        "address_line_2" : { "function": "trimToNull" }
     },
     "scripting": [
         "functions.js"
@@ -89,6 +90,12 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
 #### functions.js
 ```javascript
 "use strict";
+
+importPackage(org.apache.commons.lang3);
+
+function trimToNull(columnName, row) {
+    return StringUtils.trimToNull(row[columnName]);
+}
 
 function uppercase(columnName, row) {
     return row[columnName].toUpperCase()
