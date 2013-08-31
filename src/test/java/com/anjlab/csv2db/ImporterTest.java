@@ -33,8 +33,11 @@ public class ImporterTest
         columnMappings.put(1, "company_number");
         columnMappings.put(4, "address_line_1");
         columnMappings.put(5, "address_line_2");
+        columnMappings.put(12, "country_of_origin");
         
         config.setColumnMappings(columnMappings);
+        
+        config.setTransientColumns(Arrays.asList("country_of_origin"));
         
         Map<String, String> connectionProperties = new HashMap<String, String>();
         connectionProperties.put("username", "sa");

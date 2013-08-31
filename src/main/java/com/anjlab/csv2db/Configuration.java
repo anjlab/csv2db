@@ -96,6 +96,7 @@ public class Configuration
      * Map values are target table column names.
      */
     private Map<Integer, String> columnMappings;
+    private List<String> transientColumns;
     private Map<String, ValueDefinition> insertValues;
     private Map<String, ValueDefinition> updateValues;
     private Map<String, ValueDefinition> transform;
@@ -162,6 +163,16 @@ public class Configuration
     public void setColumnMappings(Map<Integer, String> columnMappings)
     {
         this.columnMappings = columnMappings;
+    }
+    
+    public List<String> getTransientColumns()
+    {
+        return transientColumns;
+    }
+    
+    public void setTransientColumns(List<String> transientColumns)
+    {
+        this.transientColumns = transientColumns;
     }
     
     public CSVOptions getCsvOptions()

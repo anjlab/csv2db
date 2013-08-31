@@ -17,10 +17,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -44,9 +46,16 @@ public class Importer
     {
         protected final ScriptEngine scriptEngine;
         
+        private Set<String> transientColumns;
+        
         public AbstractRecordHandler(ScriptEngine scriptEngine)
         {
             this.scriptEngine = scriptEngine;
+            this.transientColumns = new HashSet<String>();
+            if (config.getTransientColumns() != null)
+            {
+                this.transientColumns.addAll(config.getTransientColumns());
+            }
         }
 
         protected void closeQuietly(PreparedStatement statement)
@@ -73,8 +82,15 @@ public class Importer
             }
         }
         
+        private List<String> orderedTableColumnNames;
+        
         protected List<String> getOrderedTableColumnNames()
         {
+            if (orderedTableColumnNames != null)
+            {
+                return orderedTableColumnNames;
+            }
+            
             List<Integer> csvColumnIndices = new ArrayList<Integer>();
             csvColumnIndices.addAll(config.getColumnMappings().keySet());
             Collections.sort(csvColumnIndices);
@@ -83,37 +99,62 @@ public class Importer
             
             for (int csvColumnIndex : csvColumnIndices)
             {
-                columnNames.add(config.getColumnMappings().get(csvColumnIndex));
+                String columnName = config.getColumnMappings().get(csvColumnIndex);
+                
+                if (!isTransientColumn(columnName))
+                {
+                    columnNames.add(columnName);
+                }
             }
-            return columnNames;
+            
+            return orderedTableColumnNames = columnNames;
         }
+        
+        protected boolean isTransientColumn(String columnName)
+        {
+            return transientColumns.contains(columnName);
+        }
+        
+        private List<String> columnNamesWithInsertValues;
         
         protected List<String> getColumnNamesWithInsertValues()
         {
+            if (columnNamesWithInsertValues != null)
+            {
+                return columnNamesWithInsertValues;
+            }
+            
             if (config.getInsertValues() == null)
             {
-                return Collections.emptyList();
+                return columnNamesWithInsertValues = Collections.emptyList();
             }
             
             List<String> columnNames = new ArrayList<String>();
             columnNames.addAll(config.getInsertValues().keySet());
             Collections.sort(columnNames);
             
-            return columnNames;
+            return columnNamesWithInsertValues = columnNames;
         }
+        
+        private List<String> columnNamesWithUpdateValues;
         
         protected List<String> getColumnNamesWithUpdateValues()
         {
+            if (columnNamesWithUpdateValues != null)
+            {
+                return columnNamesWithUpdateValues;
+            }
+            
             if (config.getUpdateValues() == null)
             {
-                return Collections.emptyList();
+                return columnNamesWithUpdateValues = Collections.emptyList();
             }
             
             List<String> columnNames = new ArrayList<String>();
             columnNames.addAll(config.getUpdateValues().keySet());
             Collections.sort(columnNames);
             
-            return columnNames;
+            return columnNamesWithUpdateValues = columnNames;
         }
 
         protected Object transform(String targetTableColumnName, Map<String, String> nameValues) throws ConfigurationException, ScriptException

@@ -55,11 +55,15 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
     "columnMappings": {
         "0": "name",
         "1": "companies_house_id",
+        "2": "address_care_of",
         "4": "address_line_1",
         "5": "address_line_2",
         "6": "post_town",
         "9": "post_code"
     },
+    "transientColumns": [
+        "address_care_of"
+    ],
     "insertValues": {
         "id": { "sql": "nextval('company_id_sequence')" },
         "created_at": { "sql": "current_timestamp" }
@@ -69,7 +73,7 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
     },
     "transform": {
         "post_code": { "function": "uppercase" },
-        "address_line_2" : { "function": "trimToNull" }
+        "address_line_2" : { "function": "transformAddressLine2" }
     },
     "scripting": [
         "functions.js"
@@ -93,7 +97,8 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
 
 importPackage(org.apache.commons.lang3);
 
-function trimToNull(columnName, row) {
+function transformAddressLine2(columnName, row) {
+    //  row["address_care_of"] available here
     return StringUtils.trimToNull(row[columnName]);
 }
 
@@ -127,6 +132,8 @@ otherwize UPDATE will be performed and data from CSV will overwrite existing dat
 `primaryKeys` is the set of primary keys on the table. Only used in `MERGE` mode. All "primaryKeys" should be present in `columnMappings` section, which means that CSV should contain `primaryKeys` data.
 
 `columnMappings` defines mapping between zero-based column indexes in CSV and target database table column names.
+
+`transientColumns` defines mapped columns as transient, which means they are only available for JavaScript functions in the `row` argument, but these columns won't be mapped to target table columns.
 
 `insertValues` and `updateValues` allows providing values for columns that are not in CSV (like in example above with required `id` field, whose value should be taken from PostgreSQL sequence). `insertValues` used in INSERT clauses, `updateValues` used in UPDATE clauses. See <a href="#value-definitions">Value Definitions</a>.
 
@@ -195,6 +202,6 @@ You can reference one of the functions that declared in JavaScript files from `s
 
 Every function will accept two arguments:
   - `columnName` -- name of the column for which this function should produce a value, and
-  - `row` -- JSON object representing key-value pairs of currently imported CSV row.
+  - `row` -- JSON object representing key-value pairs of currently imported CSV row. Only columns that are in `columnMappings` will be present in this object.
 
 If the function referenced from context of `insertValues` or `updateValues` then `row` argument will be `null`.
