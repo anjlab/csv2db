@@ -1,17 +1,15 @@
 package com.anjlab.csv2db;
 
-import java.io.File;
-import java.io.IOException;
-import java.sql.SQLException;
-
-import javax.script.ScriptException;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+
+import javax.script.ScriptException;
+import java.io.File;
+import java.io.IOException;
+import java.sql.SQLException;
 
 public class Import
 {
@@ -20,44 +18,49 @@ public class Import
     {
         Options options =
                 new Options()
-                    .addOption("i", "input", true, "Input CSV file")
-                    .addOption("c", "config", true, "Configuration file")
-                    .addOption("h", "help", false, "Prints this help");
-        
+                        .addOption("i", "input", true, "Input CSV file")
+                        .addOption("c", "config", true, "Configuration file")
+                        .addOption("t", "numberOfThreads", true, "Number of threads")
+                        .addOption("h", "help", false, "Prints this help");
+
         CommandLineParser parser = new PosixParser();
         CommandLine cmd;
+        int numberOfThreads = 1;
         try
         {
             cmd = parser.parse(options, args);
-            
+
             if (!cmd.hasOption("config") || !cmd.hasOption("input"))
             {
                 printHelp(options);
                 System.exit(1);
                 return;
             }
+            if (cmd.hasOption("numberOfThreads"))
+            {
+                numberOfThreads = Integer.parseInt(cmd.getOptionValue("numberOfThreads"));
+            }
         }
-        catch (ParseException e)
+        catch (Exception e)
         {
             printHelp(options);
             System.exit(1);
             return;
         }
-        
         if (cmd.hasOption("help"))
         {
             printHelp(options);
             System.exit(0);
             return;
         }
-        
+
         String configFilename = cmd.getOptionValue("config");
-        
+
         Configuration config = Configuration.fromJson(configFilename);
-        
-        Importer importer = new Importer(config,
+
+        Importer importer = new Importer(config, numberOfThreads < 1 ? 1 : numberOfThreads,
                 new SimpleFileResolver(new File(configFilename).getParentFile()));
-        
+
         importer.performImport(cmd.getOptionValue("input"));
     }
 
@@ -66,4 +69,5 @@ public class Import
         HelpFormatter formatter = new HelpFormatter();
         formatter.printHelp("./run.sh", options);
     }
+
 }
