@@ -19,9 +19,10 @@ chmod +x ./build/libs/run.sh
 ./build/libs/run.sh --help
 
 usage: ./run.sh
- -c,--config <arg>   Configuration file
- -h,--help           Prints this help
- -i,--input <arg>    Input CSV file
+ -c,--config <arg>            Configuration file
+ -h,--help                    Prints this help
+ -i,--input <arg>             Input CSV file
+ -t,--numberOfThreads <arg>   Number of threads
 ```
 
 ### Example
