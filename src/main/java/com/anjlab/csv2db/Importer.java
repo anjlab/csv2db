@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -116,6 +117,17 @@ public class Importer
                             nextLine = queue.take();
                         }
                         queue.put(new String[] { terminalMessage });
+                    }
+                    catch (BatchUpdateException bue)
+                    {
+                        bue.printStackTrace(System.err);
+                        SQLException se = bue.getNextException();
+                        while (se != null)
+                        {
+                            System.err.println("Next SQLException in chain:");
+                            se.printStackTrace(System.err);
+                            se = se.getNextException();
+                        }
                     }
                     catch (Exception e)
                     {
