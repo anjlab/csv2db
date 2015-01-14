@@ -1,12 +1,5 @@
 package com.anjlab.csv2db;
 
-import au.com.bytecode.opencsv.CSVReader;
-import org.apache.commons.io.input.AutoCloseInputStream;
-import org.apache.commons.lang3.StringUtils;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -29,6 +22,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+
+import org.apache.commons.io.input.AutoCloseInputStream;
+import org.apache.commons.lang3.StringUtils;
+
+import au.com.bytecode.opencsv.CSVReader;
 
 public class Importer
 {
@@ -89,51 +91,49 @@ public class Importer
         for (int i = 0; i < numberOfThreads; i++)
         {
             final RecordHandler strategy = getRecordHandlerStrategy(createConnection(), engine);
-            executorService.submit
-            (
-                new Runnable()
+
+            executorService.submit(new Runnable()
+            {
+                @Override
+                public void run()
                 {
-                    @Override
-                    public void run()
+                    try
+                    {
+                        String[] nextLine = queue.take();
+                        while (nextLine.length != 0 && !terminalMessage.equals((nextLine)[0]))
+                        {
+                            // nextLine[] is an array of values from the line
+                            Map<String, String> nameValues = new HashMap<String, String>();
+                            for (Map.Entry<Integer, String> mapping : config.getColumnMappings().entrySet())
+                            {
+                                String value = nextLine[mapping.getKey()];
+
+                                String targetColumnName = mapping.getValue();
+
+                                nameValues.put(targetColumnName, value);
+                            }
+                            strategy.handleRecord(nameValues);
+                            nextLine = queue.take();
+                        }
+                        queue.put(new String[] { terminalMessage });
+                    }
+                    catch (Exception e)
+                    {
+                        e.printStackTrace(System.err);
+                    }
+                    finally
                     {
                         try
                         {
-                            String[] nextLine = queue.take();
-                            while (nextLine.length != 0 && !terminalMessage.equals((nextLine)[0]))
-                            {
-                                // nextLine[] is an array of values from the line
-                                Map<String, String> nameValues = new HashMap<String, String>();
-                                for (Map.Entry<Integer, String> mapping : config.getColumnMappings().entrySet())
-                                {
-                                    String value = nextLine[mapping.getKey()];
-
-                                    String targetColumnName = mapping.getValue();
-
-                                    nameValues.put(targetColumnName, value);
-                                }
-                                strategy.handleRecord(nameValues);
-                                nextLine = queue.take();
-                            }
-                            queue.put(new String[]{terminalMessage});
+                            strategy.close();
                         }
                         catch (Exception e)
                         {
-                            throw new RuntimeException(e);
-                        }
-                        finally
-                        {
-                            try
-                            {
-                                strategy.close();
-                            }
-                            catch (Exception e)
-                            {
-                                throw new RuntimeException("Problem has occurred while closing resources.", e);
-                            }
+                            throw new RuntimeException("Problem has occurred while closing resources.", e);
                         }
                     }
                 }
-            );
+            });
         }
         executorService.shutdown();
         CSVReader reader = null;
@@ -151,9 +151,10 @@ public class Importer
             String[] nextLine;
             while ((nextLine = reader.readNext()) != null)
             {
+                // XXX This may block if all handlers terminated with error
                 queue.put(nextLine);
             }
-            queue.put(new String[]{terminalMessage});
+            queue.put(new String[] { terminalMessage });
             executorService.awaitTermination(1, TimeUnit.DAYS);
         }
         catch (IOException e)
