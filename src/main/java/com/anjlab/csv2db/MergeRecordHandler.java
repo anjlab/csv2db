@@ -1,15 +1,16 @@
 package com.anjlab.csv2db;
 
 
-import org.apache.commons.lang3.ObjectUtils;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
+
+import org.apache.commons.lang3.ObjectUtils;
 
 public class MergeRecordHandler extends AbstractRecordHandler
 {
@@ -123,9 +124,7 @@ public class MergeRecordHandler extends AbstractRecordHandler
 
         for (String primaryKeyColumnName : config.getPrimaryKeys())
         {
-            String primaryKeyColumnValue = nameValues.get(primaryKeyColumnName);
-
-            selectStatement.setObject(parameterIndex++, primaryKeyColumnValue);
+            selectStatement.setObject(parameterIndex++, transform(primaryKeyColumnName, nameValues));
         }
 
         ResultSet resultSet = selectStatement.executeQuery();
