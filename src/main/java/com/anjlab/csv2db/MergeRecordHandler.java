@@ -1,6 +1,5 @@
 package com.anjlab.csv2db;
 
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,10 +13,10 @@ import org.apache.commons.lang3.ObjectUtils;
 
 public class MergeRecordHandler extends AbstractRecordHandler
 {
-    private AbstractRecordHandler insertRecordHandler;
+    protected AbstractRecordHandler insertRecordHandler;
 
-    private PreparedStatement selectStatement;
-    private PreparedStatement updateStatement;
+    protected PreparedStatement selectStatement;
+    protected PreparedStatement updateStatement;
 
     public MergeRecordHandler(Configuration config, Connection connection, ScriptEngine scriptEngine) throws SQLException, ScriptException
     {
@@ -205,7 +204,7 @@ public class MergeRecordHandler extends AbstractRecordHandler
 
     private void checkBatchExecution(int limit) throws SQLException
     {
-        if (numberOfStatementsInBatch > limit)
+        if (numberOfStatementsInBatch >= limit)
         {
             updateStatement.executeBatch();
 

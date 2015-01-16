@@ -117,24 +117,29 @@ function uppercase(columnName, row) {
 
 As shown in example above, config file should be in JSON format.
 
-`operationMode` may be one of `MERGE` or `INSERT`.
+`operationMode` may be one of `MERGE`, `INSERT` or `INSERTONLY`.
 
 In `MERGE` mode the data will be merged to the target table.
-This mode requires that `primaryKeys` property was set.
+This mode requires that the `primaryKeys` property is set.
 The tool uses `primaryKeys` to find the data in target database table for each CSV row data.
 Query by `primaryKeys` should return exactly 0 or 1 records.
 If 0 records will be found, then CVS row will be INSERTed to the database,
-otherwize UPDATE will be performed and data from CSV will overwrite existing database record.
+otherwise an UPDATE will be performed and data from CSV will overwrite existing database record.
+
+In `INSERTONLY` mode, it operates in a similar way to `MERGE` however the row will be ignored if the Query by `primaryKeys` returns a row.
+The effect is that only the rows that don't already exist in the database will be INSERTed in to the table.
 
 `driverClass`, `connectionUrl` and `connectionProperties` are corresponding values from JDBC documentation for your database.
 
 `targetTable` is the name of target table in database. The table should exist before import.
 
-`primaryKeys` is the set of primary keys on the table. Only used in `MERGE` mode. All "primaryKeys" should be present in `columnMappings` section, which means that CSV should contain `primaryKeys` data.
+`primaryKeys` is the set of primary keys on the table. Only used in `MERGE` and `INSERTONLY` modes.
+All `primaryKeys` should be present in `columnMappings` section, which means that CSV should contain `primaryKeys` data.
 
 `columnMappings` defines mapping between zero-based column indexes in CSV and target database table column names.
 
-`transientColumns` defines mapped columns as transient, which means they are only available for JavaScript functions in the `row` argument, but these columns won't be mapped to target table columns.
+`transientColumns` defines mapped columns as transient, which means they are only available for JavaScript functions in the `row` argument,
+but these columns won't be mapped to target table columns.
 
 `insertValues` and `updateValues` allows providing values for columns that are not in CSV (like in example above with required `id` field, whose value should be taken from PostgreSQL sequence). `insertValues` used in INSERT clauses, `updateValues` used in UPDATE clauses. See <a href="#value-definitions">Value Definitions</a>.
 
@@ -142,7 +147,9 @@ otherwize UPDATE will be performed and data from CSV will overwrite existing dat
 
 `scripting` defines list of JavaScript file names. The file names are relative to location of the configuration file. You can define your JavaScript functions in these files and reference them from <a href="#value-definitions">Value Definitions</a>.
 
-`forceUpdate` forces executing UPDATE statements for every row even if the data from CSV for this row is the same as in the database table. This may be needed if you want to force applying values from `updateValues` section. Default value is `false`.
+`forceUpdate` forces executing UPDATE statements for every row even if the data from CSV for this row is the same as in the database table. This may be needed if you want to force applying values from `updateValues` section. Default value is `false` and it is only used in `MERGE` mode.
+
+`ignoreNullPK` ignores any row where any of the PK values in the data are null. This may be needed if you want to top up a reference table from a data table with missing reference values where some of them are null. Default value is `false` and it is only used in `INSERTONLY` mode.
 
 `batchSize` size of INSERT/UPDATE batches. Default value is 100.
 
@@ -169,11 +176,12 @@ Value definition may be one of:
 
 ##### Constant
 
-Constant value definitions are JSON primitives. Use this when you want the same value for all rows of the column:
+Constant value definitions are JSON primitives, and can be strings, numbers or booleans. Use this when you want the same value for all rows of the column:
 ```json
 {
     "insertValues": {
-        "data_source": "CompaniesHouse"
+        "data_source": "CompaniesHouse",
+        "official_data": true
     }
 }
 ```
@@ -206,3 +214,4 @@ Every function will accept two arguments:
   - `row` -- JSON object representing key-value pairs of currently imported CSV row. Only columns that are in `columnMappings` will be present in this object.
 
 If the function referenced from context of `insertValues` or `updateValues` then `row` argument will be `null`.
+Note that primary key values will be transformed before being checked against the primary key in both `MERGE` and `INSERTONLY` modes, enabling transformation of primary key values.

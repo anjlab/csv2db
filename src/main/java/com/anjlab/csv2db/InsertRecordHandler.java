@@ -1,11 +1,12 @@
 package com.anjlab.csv2db;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Map;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
 
 public class InsertRecordHandler extends AbstractRecordHandler
 {
@@ -94,7 +95,7 @@ public class InsertRecordHandler extends AbstractRecordHandler
 
     private void checkBatchExecution(int limit) throws SQLException
     {
-        if (numberOfStatementsInBatch > limit)
+        if (numberOfStatementsInBatch >= limit)
         {
             insertStatement.executeBatch();
 
