@@ -1,15 +1,15 @@
 package com.anjlab.csv2db;
 
+import java.io.IOException;
+import java.sql.SQLException;
+
+import javax.script.ScriptException;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
-
-import javax.script.ScriptException;
-import java.io.File;
-import java.io.IOException;
-import java.sql.SQLException;
 
 public class Import
 {
@@ -58,8 +58,7 @@ public class Import
 
         Configuration config = Configuration.fromJson(configFilename);
 
-        Importer importer = new Importer(config, numberOfThreads < 1 ? 1 : numberOfThreads,
-                new SimpleFileResolver(new File(configFilename).getParentFile()));
+        Importer importer = new Importer(config, numberOfThreads < 1 ? 1 : numberOfThreads);
 
         importer.performImport(cmd.getOptionValue("input"));
     }

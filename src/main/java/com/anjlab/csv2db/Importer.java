@@ -2,8 +2,6 @@ package com.anjlab.csv2db;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -25,7 +23,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import org.apache.commons.io.input.AutoCloseInputStream;
@@ -37,14 +34,12 @@ public class Importer
 {
 
     private final Configuration config;
-    private final FileResolver scriptingResolver;
     private final int numberOfThreads;
 
-    public Importer(Configuration config, int numberOfThreads, FileResolver scriptingResolver)
+    public Importer(Configuration config, int numberOfThreads)
     {
         this.numberOfThreads = numberOfThreads;
         this.config = config;
-        this.scriptingResolver = scriptingResolver;
     }
 
     public void performImport(String filename) throws ClassNotFoundException, SQLException, IOException, ScriptException, ConfigurationException
@@ -85,13 +80,12 @@ public class Importer
         // that's why it's necessary always to have enough lines for those who read from it's thread
         int queueSize = config.getBatchSize() * numberOfThreads;
         ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
-        final ScriptEngine engine = loadScriptEngine();
         final BlockingQueue<String[]> queue = new ArrayBlockingQueue<String[]>(queueSize);
         final String terminalMessage = UUID.randomUUID().toString();
 
         for (int i = 0; i < numberOfThreads; i++)
         {
-            final RecordHandler strategy = getRecordHandlerStrategy(createConnection(), engine);
+            final RecordHandler strategy = getRecordHandlerStrategy(createConnection(), config.getScriptEngine());
 
             executorService.submit(new Runnable()
             {
@@ -184,29 +178,6 @@ public class Importer
                 reader.close();
             }
         }
-    }
-
-    private ScriptEngine loadScriptEngine() throws FileNotFoundException,
-            ScriptException, IOException
-    {
-        ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("JavaScript");
-
-        if (config.getScripting() != null)
-        {
-            for (String filename : config.getScripting())
-            {
-                FileReader scriptReader = new FileReader(scriptingResolver.getFile(filename));
-                try
-                {
-                    scriptEngine.eval(scriptReader);
-                }
-                finally
-                {
-                    scriptReader.close();
-                }
-            }
-        }
-        return scriptEngine;
     }
 
     public Connection createConnection() throws ClassNotFoundException, SQLException

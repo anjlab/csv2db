@@ -79,7 +79,7 @@ public class ImporterTest
 
         config.getCsvOptions().setEscapeChar((char) 0);
 
-        Importer importer = new Importer(config, 1, new SimpleFileResolver("src/test/resources"));
+        Importer importer = new Importer(config, 1);
 
         Connection connection = importer.createConnection();
 
@@ -109,7 +109,7 @@ public class ImporterTest
         config.setOperationMode(OperationMode.INSERT);
         config.setBatchSize(3);
 
-        importer = new Importer(config, 1, new SimpleFileResolver("src/test/resources"));
+        importer = new Importer(config, 1);
 
         connection = importer.createConnection();
 
@@ -136,7 +136,7 @@ public class ImporterTest
         config.setOperationMode(OperationMode.INSERTONLY);
         config.setBatchSize(3);
 
-        importer = new Importer(config, 1, new SimpleFileResolver("src/test/resources"));
+        importer = new Importer(config, 1);
 
         connection = importer.createConnection();
 
@@ -164,7 +164,7 @@ public class ImporterTest
 
         config.getCsvOptions().setEscapeChar((char) 0);
 
-        Importer importer = new Importer(config, 4, new SimpleFileResolver("src/test/resources"));
+        Importer importer = new Importer(config, 4);
 
         Connection connection = importer.createConnection();
 
@@ -197,7 +197,7 @@ public class ImporterTest
         config.setOperationMode(OperationMode.INSERT);
         config.setBatchSize(3);
 
-        importer = new Importer(config, 4, new SimpleFileResolver("src/test/resources"));
+        importer = new Importer(config, 4);
 
         connection = importer.createConnection();
 
@@ -286,7 +286,7 @@ public class ImporterTest
 
         config.getCsvOptions().setEscapeChar((char) 0);
 
-        Importer importer = new Importer(config, 1, new SimpleFileResolver("src/test/resources"));
+        Importer importer = new Importer(config, 1);
 
         Connection connection = importer.createConnection();
 

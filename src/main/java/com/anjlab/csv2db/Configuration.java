@@ -3,10 +3,16 @@ package com.anjlab.csv2db;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 
 import org.apache.commons.io.input.AutoCloseInputStream;
 
@@ -117,12 +123,19 @@ public class Configuration
     private boolean forceUpdate;
     private boolean ignoreNullPK;
 
+    private transient FileResolver fileResolver;
+    private transient ScriptEngine scriptEngine;
+
     public static Configuration fromJson(String filename) throws FileNotFoundException
     {
-        return fromJson(new AutoCloseInputStream(new FileInputStream(new File(filename))));
+        FileResolver resolverRelativeToParentFolder =
+                new SimpleFileResolver(new File(filename).getParentFile());
+
+        return fromJson(new AutoCloseInputStream(new FileInputStream(new File(filename))),
+                resolverRelativeToParentFolder);
     }
 
-    public static Configuration fromJson(InputStream input)
+    public static Configuration fromJson(InputStream input, FileResolver fileResolver)
     {
         Configuration config = createGson().fromJson(new InputStreamReader(input), Configuration.class);
 
@@ -130,6 +143,8 @@ public class Configuration
         {
             config.setCsvOptions(new CSVOptions());
         }
+
+        config.setFileResolver(fileResolver);
 
         return config;
     }
@@ -304,5 +319,54 @@ public class Configuration
     public void setIgnoreNullPK(boolean ignoreNullPK)
     {
         this.ignoreNullPK = ignoreNullPK;
+    }
+
+    public FileResolver getFileResolver()
+    {
+        return fileResolver;
+    }
+
+    public void setFileResolver(FileResolver fileResolver)
+    {
+        this.fileResolver = fileResolver;
+    }
+
+    public ScriptEngine getScriptEngine()
+    {
+        if (scriptEngine == null)
+        {
+            try
+            {
+                scriptEngine = newScriptEngine();
+            }
+            catch (ScriptException | IOException e)
+            {
+                throw new RuntimeException("Error loading scripting engine", e);
+            }
+        }
+        return scriptEngine;
+    }
+
+    private ScriptEngine newScriptEngine() throws FileNotFoundException,
+            ScriptException, IOException
+    {
+        ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("JavaScript");
+
+        if (getScripting() != null)
+        {
+            for (String filename : getScripting())
+            {
+                FileReader scriptReader = new FileReader(fileResolver.getFile(filename));
+                try
+                {
+                    scriptEngine.eval(scriptReader);
+                }
+                finally
+                {
+                    scriptReader.close();
+                }
+            }
+        }
+        return scriptEngine;
     }
 }
