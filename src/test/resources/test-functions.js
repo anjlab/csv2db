@@ -9,5 +9,5 @@ function reverseCompanyNumber(columnName, row) {
 }
 
 function connectionProperty(name) {
-    return name + "-from-js";
+    return java.lang.System.getProperty("user.name") + "." + name + "-from-js";
 }

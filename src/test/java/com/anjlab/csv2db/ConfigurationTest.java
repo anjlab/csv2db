@@ -78,6 +78,8 @@ public class ConfigurationTest
         Assert.assertEquals("secret", config.getConnectionProperties().get("password"));
 
         // Test override connection property with dynamic value
-        Assert.assertEquals("custom-from-js", config.getConnectionProperties().get("custom"));
+        Assert.assertEquals(
+                System.getProperty("user.name") + ".custom-from-js",
+                config.getConnectionProperties().get("custom"));
     }
 }
