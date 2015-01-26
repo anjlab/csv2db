@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -118,7 +119,7 @@ public class Configuration
     private OperationMode operationMode;
     private String driverClass;
     private String connectionUrl;
-    private Map<String, String> connectionProperties;
+    private Map<String, ValueDefinition> connectionProperties;
     private String targetTable;
     private List<String> primaryKeys;
     /**
@@ -275,10 +276,28 @@ public class Configuration
 
     public Map<String, String> getConnectionProperties()
     {
-        return connectionProperties;
+        Map<String, String> properties = new HashMap<String, String>();
+        for (Entry<String, ValueDefinition> entry : connectionProperties.entrySet())
+        {
+            try
+            {
+                properties.put(
+                        entry.getKey(),
+                        String.valueOf(
+                                entry.getValue().eval(
+                                        entry.getKey(),
+                                        new HashMap<String, String>(),
+                                        getScriptEngine())));
+            }
+            catch (ScriptException e)
+            {
+                throw new RuntimeException("Error evaluating connection properties", e);
+            }
+        }
+        return properties;
     }
 
-    public void setConnectionProperties(Map<String, String> connectionProperties)
+    public void setConnectionProperties(Map<String, ValueDefinition> connectionProperties)
     {
         this.connectionProperties = connectionProperties;
     }

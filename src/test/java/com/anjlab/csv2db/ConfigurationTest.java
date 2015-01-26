@@ -31,9 +31,9 @@ public class ConfigurationTest
 
         config.setTransientColumns(Arrays.asList("country_of_origin"));
 
-        Map<String, String> connectionProperties = new HashMap<String, String>();
-        connectionProperties.put("username", "sa");
-        connectionProperties.put("password", "");
+        Map<String, ValueDefinition> connectionProperties = new HashMap<String, ValueDefinition>();
+        connectionProperties.put("username", new StringLiteral("sa"));
+        connectionProperties.put("password", new StringLiteral(""));
 
         config.setConnectionProperties(connectionProperties);
 
@@ -76,5 +76,8 @@ public class ConfigurationTest
         // Test override just one key on a nested object
         Assert.assertEquals("sa", config.getConnectionProperties().get("username"));
         Assert.assertEquals("secret", config.getConnectionProperties().get("password"));
+
+        // Test override connection property with dynamic value
+        Assert.assertEquals("custom-from-js", config.getConnectionProperties().get("custom"));
     }
 }
