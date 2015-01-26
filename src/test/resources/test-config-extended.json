@@ -1,0 +1,6 @@
+{
+    "extend": "test-config.json",
+    "connectionProperties": {
+        "password": "secret"
+    }
+}

@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -21,11 +22,23 @@ import au.com.bytecode.opencsv.CSVReader;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class Configuration
 {
 
     private static final int DEFAULT_BATCH_SIZE = 100;
+
+    private static final Gson gson = createGson();
+
+    private static Gson createGson()
+    {
+        GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.registerTypeAdapter(ValueDefinition.class, new ValueDefinitionAdapter());
+        return gsonBuilder.create();
+    }
 
     public enum OperationMode
     {
@@ -135,9 +148,10 @@ public class Configuration
                 resolverRelativeToParentFolder);
     }
 
-    public static Configuration fromJson(InputStream input, FileResolver fileResolver)
+    public static Configuration fromJson(InputStream input, FileResolver fileResolver) throws FileNotFoundException
     {
-        Configuration config = createGson().fromJson(new InputStreamReader(input), Configuration.class);
+        Configuration config = gson.fromJson(
+                readConfig(input, fileResolver), Configuration.class);
 
         if (config.getCsvOptions() == null)
         {
@@ -149,16 +163,54 @@ public class Configuration
         return config;
     }
 
-    public String toJson()
+    private static JsonElement readConfig(InputStream input, FileResolver fileResolver) throws FileNotFoundException
     {
-        return createGson().toJson(this);
+        JsonObject config = (JsonObject) new JsonParser().parse(new InputStreamReader(input));
+
+        if (config.has("extend"))
+        {
+            String parentFilename = config.get("extend").getAsString();
+
+            JsonElement parentConfig = readConfig(
+                    new AutoCloseInputStream(new FileInputStream(fileResolver.getFile(parentFilename))),
+                    fileResolver);
+
+            return extend(config, parentConfig);
+        }
+
+        return config;
     }
 
-    private static Gson createGson()
+    private static JsonElement extend(JsonElement configElement, JsonElement parentConfigElement)
     {
-        GsonBuilder gsonBuilder = new GsonBuilder();
-        gsonBuilder.registerTypeAdapter(ValueDefinition.class, new ValueDefinitionAdapter());
-        return gsonBuilder.create();
+        if (!configElement.isJsonObject() || !parentConfigElement.isJsonObject())
+        {
+            return configElement;
+        }
+
+        final JsonObject config = configElement.getAsJsonObject();
+        final JsonObject parentConfig = parentConfigElement.getAsJsonObject();
+
+        for (Entry<String, JsonElement> entry : parentConfig.entrySet())
+        {
+            if (!config.has(entry.getKey()))
+            {
+                // Copy entire member from parent
+                config.add(entry.getKey(), entry.getValue());
+            }
+            else
+            {
+                // Same property declared, but maybe some children don't have overrides?
+                extend(config.get(entry.getKey()), entry.getValue());
+            }
+        }
+
+        return config;
+    }
+
+    public String toJson()
+    {
+        return gson.toJson(this);
     }
 
     public String getDriverClass()
