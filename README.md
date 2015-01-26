@@ -42,11 +42,12 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
 
 ``` json
 {
+    "extend": "parent-config.json",
     "operationMode": "MERGE",
     "driverClass": "org.apache.derby.jdbc.EmbeddedDriver",
     "connectionUrl": "jdbc:derby:memory:myDB;create=true",
     "connectionProperties": {
-        "username": "sa",
+        "username": { "function": "connectionUsername" },
         "password": ""
     },
     "targetTable": "companies",
@@ -98,6 +99,12 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
 
 importPackage(org.apache.commons.lang3);
 
+//  For functions used in connection properties
+//  first argument is the name of evaluating connection property
+function connectionUsername(propertyName) {
+    return java.lang.System.getProperty("user.name")
+}
+
 function transformAddressLine2(columnName, row) {
     //  row["address_care_of"] available here
     return StringUtils.trimToNull(row[columnName]);
@@ -117,6 +124,8 @@ function uppercase(columnName, row) {
 
 As shown in example above, config file should be in JSON format.
 
+`extend` allows extending this config definition from parent config. For example, you may extract some common bits from your configs to one shared common file and extend from it. All paths in parent config will be relative to this configuration.
+
 `operationMode` may be one of `MERGE`, `INSERT` or `INSERTONLY`.
 
 In `MERGE` mode the data will be merged to the target table.
@@ -129,7 +138,7 @@ otherwise an UPDATE will be performed and data from CSV will overwrite existing 
 In `INSERTONLY` mode, it operates in a similar way to `MERGE` however the row will be ignored if the Query by `primaryKeys` returns a row.
 The effect is that only the rows that don't already exist in the database will be INSERTed in to the table.
 
-`driverClass`, `connectionUrl` and `connectionProperties` are corresponding values from JDBC documentation for your database.
+`driverClass`, `connectionUrl` and `connectionProperties` are corresponding values from JDBC documentation for your database. Since version 2.1 it is possible to use <a href="#value-definitions">JavaScript function references</a> for connection properties.
 
 `targetTable` is the name of target table in database. The table should exist before import.
 
