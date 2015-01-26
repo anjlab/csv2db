@@ -274,17 +274,26 @@ public class Configuration
         this.primaryKeys = primaryKeys;
     }
 
-    public Map<String, String> getConnectionProperties()
+    public Map<String, String> getConnectionProperties() throws ConfigurationException
     {
         Map<String, String> properties = new HashMap<String, String>();
         for (Entry<String, ValueDefinition> entry : connectionProperties.entrySet())
         {
             try
             {
+                ValueDefinition value = entry.getValue();
+
+                if (value.producesSQL())
+                {
+                    throw new ConfigurationException(
+                            "Connection property '" + entry.getKey() + "' produces SQL which is not supported."
+                                    + "Only primitive types and function references allowed here.");
+                }
+
                 properties.put(
                         entry.getKey(),
                         String.valueOf(
-                                entry.getValue().eval(
+                                value.eval(
                                         entry.getKey(),
                                         new HashMap<String, String>(),
                                         getScriptEngine())));

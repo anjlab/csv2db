@@ -64,7 +64,7 @@ public class ConfigurationTest
     }
 
     @Test
-    public void testExtend() throws FileNotFoundException
+    public void testExtend() throws FileNotFoundException, ConfigurationException
     {
         Configuration config = Configuration.fromJson(
                 "src/test/resources/test-config-extended.json");

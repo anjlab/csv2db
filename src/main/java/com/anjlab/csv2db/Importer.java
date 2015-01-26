@@ -180,7 +180,7 @@ public class Importer
         }
     }
 
-    public Connection createConnection() throws ClassNotFoundException, SQLException
+    public Connection createConnection() throws ClassNotFoundException, SQLException, ConfigurationException
     {
         Class.forName(config.getDriverClass());
         Properties properties = new Properties();
