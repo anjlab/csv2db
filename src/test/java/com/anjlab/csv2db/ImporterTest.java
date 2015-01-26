@@ -128,6 +128,32 @@ public class ImporterTest
         expectedDataset.addAll(getExpectedDataset(false));
         sortDatasetByCompanyNameAndUpdateDate(expectedDataset);
         assertRecordCount(connection, expectedDataset, true);
+
+        // Test InsertOnly
+
+        connection.close();
+
+        config.setOperationMode(OperationMode.INSERTONLY);
+        config.setBatchSize(3);
+
+        importer = new Importer(config, 1, new SimpleFileResolver("src/test/resources"));
+
+        connection = importer.createConnection();
+
+        importer.performImport("src/test/resources/test-data.csv");
+
+        assertRecordCount(connection, expectedDataset, true);
+
+        connection.createStatement()
+                .executeUpdate("delete from companies_house_records");
+
+        config.setIgnoreNullPK(true);
+
+        importer.performImport("src/test/resources/test-data.csv");
+
+        // For the first time the data will be inserted, we don't insert any values to updated_at in
+        // this test case
+        assertRecordCount(connection, getExpectedDataset(false), true);
     }
 
     @Test
@@ -264,15 +290,8 @@ public class ImporterTest
 
         Connection connection = importer.createConnection();
 
-        try
-        {
-            connection.createStatement()
-                    .executeUpdate("drop table companies_house_records");
-        }
-        catch (SQLException e)
-        {
-            //  Ignore
-        }
+        connection.createStatement()
+                .executeUpdate("drop table companies_house_records");
 
         connection.createStatement()
                 .executeUpdate(
