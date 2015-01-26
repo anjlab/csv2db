@@ -21,7 +21,21 @@ public class ValueDefinitionAdapter
     {
         if (json instanceof JsonPrimitive)
         {
-            return new StringLiteral(json.getAsString());
+            JsonPrimitive jsonPrimitive = (JsonPrimitive) json;
+            if (jsonPrimitive.isString())
+            {
+                return new StringLiteral(json.getAsString());
+            }
+            if (jsonPrimitive.isBoolean())
+            {
+                return new BooleanLiteral(json.getAsBoolean());
+            }
+            if (jsonPrimitive.isNumber())
+            {
+                return new NumberLiteral(json.getAsNumber());
+            }
+
+            throw new JsonParseException("Unsupported value definition: " + jsonPrimitive);
         }
         else
         {

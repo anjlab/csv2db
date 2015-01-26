@@ -225,10 +225,12 @@ public class Importer
     {
         switch (config.getOperationMode())
         {
-            case INSERT:
-                return new InsertRecordHandler(config, connection, scriptEngine);
-            default:
-                return new MergeRecordHandler(config, connection, scriptEngine);
+        case INSERT:
+            return new InsertRecordHandler(config, connection, scriptEngine);
+        case INSERTONLY:
+            return new InsertOnlyRecordHandler(config, connection, scriptEngine);
+        default:
+            return new MergeRecordHandler(config, connection, scriptEngine);
         }
     }
 

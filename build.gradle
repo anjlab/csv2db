@@ -2,7 +2,7 @@ allprojects {
     apply plugin: 'eclipse'
 
     group = 'com.anjlab'
-    version = '2.0.2'
+    version = '2.0.3'
 }
 
 task wrapper(type: Wrapper) {
@@ -14,8 +14,8 @@ import org.gradle.plugins.ide.eclipse.model.*;
 apply plugin: 'java'
 apply plugin: 'maven'
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 

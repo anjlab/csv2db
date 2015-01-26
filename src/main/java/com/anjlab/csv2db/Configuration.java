@@ -1,11 +1,5 @@
 package com.anjlab.csv2db;
 
-import au.com.bytecode.opencsv.CSVParser;
-import au.com.bytecode.opencsv.CSVReader;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import org.apache.commons.io.input.AutoCloseInputStream;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -14,6 +8,14 @@ import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.io.input.AutoCloseInputStream;
+
+import au.com.bytecode.opencsv.CSVParser;
+import au.com.bytecode.opencsv.CSVReader;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 public class Configuration
 {
 
@@ -21,7 +23,7 @@ public class Configuration
 
     public enum OperationMode
     {
-        INSERT, MERGE
+        INSERT, MERGE, INSERTONLY
     }
 
     public static class CSVOptions
@@ -113,6 +115,7 @@ public class Configuration
     private int batchSize = DEFAULT_BATCH_SIZE;
     private CSVOptions csvOptions;
     private boolean forceUpdate;
+    private boolean ignoreNullPK;
 
     public static Configuration fromJson(String filename) throws FileNotFoundException
     {
@@ -291,5 +294,15 @@ public class Configuration
     public void setForceUpdate(boolean forceUpdate)
     {
         this.forceUpdate = forceUpdate;
+    }
+
+    public boolean isIgnoreNullPK()
+    {
+        return ignoreNullPK;
+    }
+
+    public void setIgnoreNullPK(boolean ignoreNullPK)
+    {
+        this.ignoreNullPK = ignoreNullPK;
     }
 }
