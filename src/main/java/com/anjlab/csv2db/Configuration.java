@@ -131,6 +131,7 @@ public class Configuration
     private Map<String, ValueDefinition> insertValues;
     private Map<String, ValueDefinition> updateValues;
     private Map<String, ValueDefinition> transform;
+    private ValueDefinition map;
     private List<String> scripting;
     private int batchSize = DEFAULT_BATCH_SIZE;
     private CSVOptions csvOptions;
@@ -252,6 +253,16 @@ public class Configuration
     public void setTransientColumns(List<String> transientColumns)
     {
         this.transientColumns = transientColumns;
+    }
+
+    public FunctionReference getMap()
+    {
+        return (FunctionReference) map;
+    }
+
+    public void setMap(FunctionReference map)
+    {
+        this.map = map;
     }
 
     public CSVOptions getCsvOptions()

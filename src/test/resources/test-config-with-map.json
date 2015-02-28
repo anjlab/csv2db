@@ -1,0 +1,6 @@
+{
+    "extend": "test-config-with-scripting.json",
+    "map": {
+        "function": "testMap"
+    }
+}

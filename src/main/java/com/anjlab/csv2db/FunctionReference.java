@@ -1,5 +1,6 @@
 package com.anjlab.csv2db;
 
+import java.util.Collection;
 import java.util.Map;
 
 import javax.script.ScriptEngine;
@@ -20,14 +21,19 @@ public class FunctionReference implements ValueDefinition
         this.functionName = functionName;
     }
     
-    @Override
-    public Object eval(String targetTableColumnName, Map<String, String> nameValues, ScriptEngine scriptEngine)
+    public Object eval(ScriptEngine scriptEngine, Object... args)
     {
         StringBuilder functionCall = new StringBuilder();
         functionCall.append(functionName)
-                    .append("('")
-                    .append(targetTableColumnName).append("',").append(GSON.toJson(nameValues))
-                    .append(')');
+                    .append('(');
+
+        if (args != null)
+        {
+            buildArgumentsList(functionCall, args);
+        }
+
+        functionCall.append(')');
+
         try
         {
             return scriptEngine.eval(functionCall.toString());
@@ -36,6 +42,55 @@ public class FunctionReference implements ValueDefinition
         {
             throw new RuntimeException("Error calling " + functionCall, e);
         }
+    }
+
+    private void buildArgumentsList(StringBuilder functionCall, Object... args)
+    {
+        boolean firstArg = true;
+
+        for (Object arg : args)
+        {
+            if (firstArg)
+            {
+                firstArg = false;
+            }
+            else
+            {
+                functionCall.append(',');
+            }
+
+            if (arg == null)
+            {
+                functionCall.append("null");
+            }
+            else if (arg instanceof String)
+            {
+                functionCall.append('\'').append(arg).append('\'');
+            }
+            else if (arg instanceof Number || arg instanceof Boolean || arg.getClass().isPrimitive())
+            {
+                functionCall.append(arg);
+            }
+            else if (arg instanceof Map<?, ?> || arg instanceof Collection<?>)
+            {
+                functionCall.append(GSON.toJson(arg));
+            }
+            else if (arg instanceof FunctionReference)
+            {
+                //  Pass as function name literal
+                functionCall.append(((FunctionReference) arg).functionName);
+            }
+            else
+            {
+                throw new IllegalArgumentException("Unsupported argument type: " + arg);
+            }
+        }
+    }
+    
+    @Override
+    public Object eval(String targetTableColumnName, Map<String, String> nameValues, ScriptEngine scriptEngine)
+    {
+        return eval(scriptEngine, targetTableColumnName, nameValues);
     }
     
     @Override

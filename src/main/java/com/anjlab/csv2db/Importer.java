@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 
@@ -89,6 +90,39 @@ public class Importer
 
             executorService.submit(new Runnable()
             {
+                //  The map function accepts nameValues and the JavaScript emit callback function.
+                //  The emit function should call back to Java, but since we can't create pure Java
+                //  object representing JavaScript function we create this bridge that will in turn
+                //  do the actual call to Java using the #handleRecord(...) interface method
+                private final ThreadLocal<FunctionReference> emitFunction = new ThreadLocal<FunctionReference>()
+                {
+                    @Override
+                    protected FunctionReference initialValue()
+                    {
+                        String threadLocalEmit = "emit" + Thread.currentThread().hashCode();
+                        String threadLocalStrategy = "strategy" + Thread.currentThread().hashCode();
+
+                        StringBuilder emitFunction = new StringBuilder()
+                            .append("function ").append(threadLocalEmit).append("(nameValues) {")
+                            .append(threadLocalStrategy).append(".handleRecord(nameValues);")
+                            .append("}");
+
+                        try
+                        {
+                            config.getScriptEngine().getContext().setAttribute(
+                                    threadLocalStrategy, strategy, ScriptContext.ENGINE_SCOPE);
+
+                            config.getScriptEngine().eval(emitFunction.toString());
+                        }
+                        catch (ScriptException e)
+                        {
+                            throw new RuntimeException("Internal error", e);
+                        }
+
+                        return new FunctionReference(threadLocalEmit);
+                    }
+                };
+
                 @Override
                 public void run()
                 {
@@ -107,7 +141,21 @@ public class Importer
 
                                 nameValues.put(targetColumnName, value);
                             }
-                            strategy.handleRecord(nameValues);
+
+                            if (config.getMap() == null)
+                            {
+                                strategy.handleRecord(nameValues);
+                            }
+                            else
+                            {
+                                //  Note that all emitted values (if any)
+                                //  will be handled by this same thread
+                                config.getMap().eval(
+                                        config.getScriptEngine(),
+                                        nameValues,
+                                        emitFunction.get());
+                            }
+
                             nextLine = queue.take();
                         }
                         queue.put(new String[] { terminalMessage });
@@ -123,7 +171,7 @@ public class Importer
                             se = se.getNextException();
                         }
                     }
-                    catch (Exception e)
+                    catch (Throwable e)
                     {
                         e.printStackTrace(System.err);
                     }

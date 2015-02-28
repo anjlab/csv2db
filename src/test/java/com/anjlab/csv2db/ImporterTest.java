@@ -31,6 +31,8 @@ public class ImporterTest
 
         Connection connection = importer.createConnection();
 
+        dropTableIfExists(connection);
+
         connection.createStatement()
                 .executeUpdate(
                         "create table companies_house_records (" +
@@ -116,8 +118,7 @@ public class ImporterTest
 
         Connection connection = importer.createConnection();
 
-        connection.createStatement()
-                .executeUpdate("drop table companies_house_records");
+        dropTableIfExists(connection);
 
         connection.createStatement()
                 .executeUpdate(
@@ -223,6 +224,9 @@ public class ImporterTest
             }
             index++;
         }
+
+        Assert.assertEquals(expectedData.size(), index);
+
         resultSet.close();
     }
 
@@ -238,8 +242,7 @@ public class ImporterTest
 
         Connection connection = importer.createConnection();
 
-        connection.createStatement()
-                .executeUpdate("drop table companies_house_records");
+        dropTableIfExists(connection);
 
         connection.createStatement()
                 .executeUpdate(
@@ -265,6 +268,65 @@ public class ImporterTest
         assertRecordCount(connection, expectedData, false);
 
         connection.close();
+    }
+
+    @Test
+    public void testImportWithMap() throws Exception
+    {
+        Configuration config = Configuration.fromJson(
+                "src/test/resources/test-config-with-map.json");
+
+        config.getCsvOptions().setEscapeChar((char) 0);
+
+        Importer importer = new Importer(config, 1);
+
+        Connection connection = importer.createConnection();
+
+        dropTableIfExists(connection);
+
+        connection.createStatement()
+                .executeUpdate(
+                        "create table companies_house_records (" +
+                                "id timestamp not null," +
+                                "company_name varchar(160)," +
+                                "company_number varchar(8)," +
+                                "generated_value varchar(8)" +
+                                ")");
+
+        importer.performImport("src/test/resources/test-data.csv");
+
+        List<Object[]> dataset = getExpectedDataset(false);
+
+        List<Object[]> expectedData = new ArrayList<Object[]>();
+        for (Object[] row : dataset)
+        {
+            expectedData.add(new Object[]{
+                    row[0].toString().toLowerCase(),
+                    row[1].toString(),
+                    StringUtils.reverse(row[1].toString())});
+
+            //  map function will call emit(nameValues) twice
+            expectedData.add(new Object[]{
+                    row[0].toString().toLowerCase(),
+                    row[1].toString(),
+                    StringUtils.reverse(row[1].toString())});
+        }
+        assertRecordCount(connection, expectedData, false);
+
+        connection.close();
+    }
+
+    private void dropTableIfExists(Connection connection)
+    {
+        try
+        {
+            connection.createStatement()
+                    .executeUpdate("drop table companies_house_records");
+        }
+        catch (SQLException e)
+        {
+            //  OK, table doesn't exist
+        }
     }
 
     private List<Object[]> sortDatasetByCompanyNameAndUpdateDate(List<Object[]> expectedDataset)
