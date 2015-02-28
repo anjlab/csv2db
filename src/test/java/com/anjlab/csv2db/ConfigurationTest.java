@@ -10,6 +10,7 @@ import org.junit.Test;
 
 import com.anjlab.csv2db.Configuration.CSVOptions;
 import com.anjlab.csv2db.Configuration.OperationMode;
+import com.google.gson.JsonParser;
 
 public class ConfigurationTest
 {
@@ -60,7 +61,9 @@ public class ConfigurationTest
 
         String actualJson = Configuration.fromJson("src/test/resources/test-config.json").toJson();
 
-        Assert.assertEquals(expectedJson, actualJson);
+        Assert.assertEquals(
+                new JsonParser().parse(expectedJson),
+                new JsonParser().parse(actualJson));
     }
 
     @Test
