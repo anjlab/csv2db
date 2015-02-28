@@ -441,7 +441,14 @@ public class Configuration
     private ScriptEngine newScriptEngine() throws FileNotFoundException,
             ScriptException, IOException
     {
-        ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("JavaScript");
+        ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
+
+        ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("Nashorn");
+
+        if (scriptEngine == null)
+        {
+            scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
+        }
 
         if (getScripting() != null)
         {
