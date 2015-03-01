@@ -480,7 +480,7 @@ public class Configuration
         options
                 .addOption("m", MODE, false, "Operation mode (INSERT, MERGE, INSERTONLY)")
                 .addOption("d", DRIVER_CLASS, false, "JDBC driver class name")
-                .addOption("c", CONNECTION_URL, false, "JDBC connection URL")
+                .addOption("l", CONNECTION_URL, false, "JDBC connection URL")
                 .addOption("u", USERNAME, false, "Connection username")
                 .addOption("p", PASSWORD, false, "Connection password");
     }

@@ -23,10 +23,11 @@ chmod +x ./build/libs/run.sh
 ./build/libs/run.sh --help
 
 usage: ./run.sh
- -c,--connectionUrl           JDBC connection URL
+ -c,--config <arg>            Configuration file
  -d,--driverClass             JDBC driver class name
  -h,--help                    Prints this help
  -i,--input <arg>             Input CSV file
+ -l,--connectionUrl           JDBC connection URL
  -m,--mode                    Operation mode (INSERT, MERGE, INSERTONLY)
  -p,--password                Connection password
  -t,--numberOfThreads <arg>   Number of threads
