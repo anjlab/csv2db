@@ -24,7 +24,6 @@ dependencies {
     testCompile 'org.apache.derby:derby:10.9.1.0'
     
     compile 'net.sf.opencsv:opencsv:2.3'
-    compile 'postgresql:postgresql:9.1-901-1.jdbc4'
     compile 'commons-cli:commons-cli:1.2'
     compile 'commons-io:commons-io:2.4'
     compile 'com.google.code.gson:gson:2.2.2'
@@ -35,6 +34,18 @@ repositories {
     mavenLocal()
     mavenCentral()
 }
+
+task downloadJdbcDriver << {
+    dependencies {
+        if (!project.hasProperty("jdbcDriver")) {
+            ext.jdbcDriver = 'org.postgresql:postgresql:9.+'
+        }
+        
+        runtime jdbcDriver
+    }
+}
+
+classes.dependsOn downloadJdbcDriver
 
 task copyDeps(type: Copy) {
     into "$buildDir/libs/lib"
