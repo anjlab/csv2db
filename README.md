@@ -35,7 +35,9 @@ This distribution shipped with latest PostgreSQL 9.x JDBC driver.
 
 If you need to connect to different RDBMS try either:
 
-  * (re)build `csv2db` with `-PjdbcDriver=<groupId:artifactId:version>` key. For example, to get latest 5.x MySQL Connector/J driver run build with:
+  * (re)build `csv2db` with `-PjdbcDriver=<groupId:artifactId:version>` key.
+ 
+    For example, to get latest 5.x MySQL Connector/J driver run build with:
 
   ```
 ./gradlew -PjdbcDriver=mysql:mysql-connector-java:5+ build
