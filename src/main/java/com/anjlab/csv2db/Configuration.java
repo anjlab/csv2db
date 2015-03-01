@@ -16,6 +16,8 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
 import org.apache.commons.io.input.AutoCloseInputStream;
 
 import au.com.bytecode.opencsv.CSVParser;
@@ -29,6 +31,11 @@ import com.google.gson.JsonParser;
 
 public class Configuration
 {
+    private static final String MODE = "mode";
+    private static final String DRIVER_CLASS = "driverClass";
+    private static final String CONNECTION_URL = "connectionUrl";
+    private static final String USERNAME = "username";
+    private static final String PASSWORD = "password";
 
     private static final int DEFAULT_BATCH_SIZE = 100;
 
@@ -466,5 +473,45 @@ public class Configuration
             }
         }
         return scriptEngine;
+    }
+
+    public static void addOptions(Options options)
+    {
+        options
+                .addOption("m", MODE, false, "Operation mode (INSERT, MERGE, INSERTONLY)")
+                .addOption("d", DRIVER_CLASS, false, "JDBC driver class name")
+                .addOption("c", CONNECTION_URL, false, "JDBC connection URL")
+                .addOption("u", USERNAME, false, "Connection username")
+                .addOption("p", PASSWORD, false, "Connection password");
+    }
+
+    public Configuration overrideFrom(CommandLine cmd)
+    {
+        if (cmd.hasOption(MODE))
+        {
+            setOperationMode(OperationMode.valueOf(cmd.getOptionValue(MODE)));
+        }
+
+        if (cmd.hasOption(DRIVER_CLASS))
+        {
+            setDriverClass(cmd.getOptionValue(DRIVER_CLASS));
+        }
+
+        if (cmd.hasOption(CONNECTION_URL))
+        {
+            setConnectionUrl(cmd.getOptionValue(CONNECTION_URL));
+        }
+
+        if (cmd.hasOption(USERNAME))
+        {
+            connectionProperties.put("username", new StringLiteral(cmd.getOptionValue(USERNAME)));
+        }
+
+        if (cmd.hasOption(PASSWORD))
+        {
+            connectionProperties.put("password", new StringLiteral(cmd.getOptionValue(PASSWORD)));
+        }
+
+        return this;
     }
 }

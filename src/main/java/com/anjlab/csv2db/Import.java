@@ -13,6 +13,7 @@ import org.apache.commons.cli.PosixParser;
 
 public class Import
 {
+
     public static void main(String[] args)
             throws IOException, ClassNotFoundException, SQLException, ScriptException, ConfigurationException
     {
@@ -22,6 +23,8 @@ public class Import
                         .addOption("c", "config", true, "Configuration file")
                         .addOption("t", "numberOfThreads", true, "Number of threads")
                         .addOption("h", "help", false, "Prints this help");
+
+        Configuration.addOptions(options);
 
         CommandLineParser parser = new PosixParser();
         CommandLine cmd;
@@ -56,7 +59,7 @@ public class Import
 
         String configFilename = cmd.getOptionValue("config");
 
-        Configuration config = Configuration.fromJson(configFilename);
+        Configuration config = Configuration.fromJson(configFilename).overrideFrom(cmd);
 
         Importer importer = new Importer(config, numberOfThreads < 1 ? 1 : numberOfThreads);
 
