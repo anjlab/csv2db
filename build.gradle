@@ -18,6 +18,7 @@ targetCompatibility = 1.7
 dependencies {
     testCompile 'junit:junit:4.8.2'
     testCompile 'org.apache.derby:derby:10.9.1.0'
+    testCompile 'org.postgresql:postgresql:9.+'
     
     compile 'net.sf.opencsv:opencsv:2.3'
     compile 'commons-cli:commons-cli:1.2'
