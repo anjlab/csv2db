@@ -131,10 +131,10 @@ public class Importer
                 //  The emit function should call back to Java, but since we can't create pure Java
                 //  object representing JavaScript function we create this bridge that will in turn
                 //  do the actual call to Java using the #handleRecord(...) interface method
-                private final ThreadLocal<FunctionReference> emitFunction = new ThreadLocal<FunctionReference>()
+                private final ThreadLocal<Object> emitFunction = new ThreadLocal<Object>()
                 {
                     @Override
-                    protected FunctionReference initialValue()
+                    protected Object initialValue()
                     {
                         String threadLocalEmit = "emit" + Thread.currentThread().hashCode();
                         String threadLocalStrategy = "strategy" + Thread.currentThread().hashCode();
@@ -149,14 +149,12 @@ public class Importer
                             config.getScriptEngine().getContext().setAttribute(
                                     threadLocalStrategy, strategy, ScriptContext.ENGINE_SCOPE);
 
-                            config.getScriptEngine().eval(emitFunction.toString());
+                            return config.getScriptEngine().eval(emitFunction.toString());
                         }
                         catch (ScriptException e)
                         {
                             throw new RuntimeException("Internal error", e);
                         }
-
-                        return new FunctionReference(threadLocalEmit);
                     }
                 };
 
