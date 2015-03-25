@@ -18,20 +18,25 @@ chmod +x gradlew
 ## How to Use
 
 ``` bash
-chmod +x ./build/libs/run.sh
-
 ./build/libs/run.sh --help
 
 usage: ./run.sh
  -c,--config <arg>            Configuration file
- -d,--driverClass             JDBC driver class name
+ -d,--driverClass <arg>       JDBC driver class name
  -h,--help                    Prints this help
- -i,--input <arg>             Input CSV file
- -l,--connectionUrl           JDBC connection URL
- -m,--mode                    Operation mode (INSERT, MERGE, INSERTONLY)
- -p,--password                Connection password
- -t,--numberOfThreads <arg>   Number of threads
- -u,--username                Connection username
+ -i,--input <arg>             Input CSV file, or ZIP containing CSV files,
+                              or path to folder that contains CSV files
+ -l,--connectionUrl <arg>     JDBC connection URL
+ -m,--mode <arg>              Operation mode (INSERT, MERGE, INSERTONLY)
+ -n,--include <arg>           Only process files whose names match this
+                              regexp (matches all files in input ZIP or
+                              input folder by default)
+ -p,--password <arg>          Connection password
+ -s,--skip <arg>              Skip files whose names match this regexp
+                              (skip nothing by default)
+ -t,--numberOfThreads <arg>   Number of threads (default is number of
+                              processors available to JVM)
+ -u,--username <arg>          Connection username
 ```
 
 Command line options take precedence over values from config file.
@@ -136,6 +141,10 @@ Follow [this guide](https://wiki.openjdk.java.net/display/Nashorn/Rhino+Migratio
 ```javascript
 "use strict";
 
+//load compatibility script when on Java 8
+
+load("nashorn:mozilla_compat.js");
+
 importPackage(org.apache.commons.lang3);
 
 //  Map function accepts two arguments:
@@ -143,7 +152,7 @@ importPackage(org.apache.commons.lang3);
 //  - `emit` is a callback function that accepts new value of `row` that will
 //    be used instead of original value
 function filterRows(row, emit) {
-    if (row["companies_house_id"]) {
+    if (row.get("companies_house_id")) {
         emit(row)
     }
 }
@@ -155,12 +164,12 @@ function connectionUsername(propertyName) {
 }
 
 function transformAddressLine2(columnName, row) {
-    //  row["address_care_of"] available here
-    return StringUtils.trimToNull(row[columnName]);
+    //  row.get("address_care_of") available here
+    return StringUtils.trimToNull(row.get(columnName));
 }
 
 function uppercase(columnName, row) {
-    return row[columnName].toUpperCase()
+    return row.get(columnName).toUpperCase()
 }
 ```
 
