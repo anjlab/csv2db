@@ -11,7 +11,7 @@ public interface ValueDefinition
 {
     JsonElement toJsonElement();
 
-    Object eval(String targetTableColumnName, Map<String, String> nameValues, ScriptEngine scriptEngine) throws ScriptException;
+    Object eval(String targetTableColumnName, Map<String, Object> nameValues, ScriptEngine scriptEngine) throws ScriptException;
 
     boolean producesSQL();
 }

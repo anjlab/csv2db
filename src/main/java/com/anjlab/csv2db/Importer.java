@@ -167,7 +167,7 @@ public class Importer
                         while (nextLine.length != 0 && !terminalMessage.equals((nextLine)[0]))
                         {
                             // nextLine[] is an array of values from the line
-                            Map<String, String> nameValues = new HashMap<String, String>();
+                            Map<String, Object> nameValues = new HashMap<String, Object>();
                             for (Map.Entry<Integer, String> mapping : config.getColumnMappings().entrySet())
                             {
                                 String value = nextLine[mapping.getKey()];

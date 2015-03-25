@@ -17,7 +17,7 @@ public class BooleanLiteral implements ValueDefinition
     }
     
     @Override
-    public Object eval(String targetTableColumnName, Map<String, String> nameValues, ScriptEngine scriptEngine)
+    public Object eval(String targetTableColumnName, Map<String, Object> nameValues, ScriptEngine scriptEngine)
     {
         return value;
     }

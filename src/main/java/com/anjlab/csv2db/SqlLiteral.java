@@ -26,7 +26,7 @@ public class SqlLiteral implements ValueDefinition
 
     @Override
     public Object eval(String targetTableColumnName,
-            Map<String, String> nameValues, ScriptEngine scriptEngine)
+            Map<String, Object> nameValues, ScriptEngine scriptEngine)
     {
         return value;
     }

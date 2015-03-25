@@ -313,7 +313,7 @@ public class Configuration
                         String.valueOf(
                                 value.eval(
                                         entry.getKey(),
-                                        new HashMap<String, String>(),
+                                        new HashMap<String, Object>(),
                                         getScriptEngine())));
             }
             catch (ScriptException e)

@@ -146,7 +146,7 @@ public abstract class AbstractRecordHandler implements RecordHandler
         return columnNamesWithUpdateValues = columnNames;
     }
 
-    protected Object transform(String targetTableColumnName, Map<String, String> nameValues) throws ConfigurationException, ScriptException
+    protected Object transform(String targetTableColumnName, Map<String, Object> nameValues) throws ConfigurationException, ScriptException
     {
         if (config.getTransform() != null)
         {

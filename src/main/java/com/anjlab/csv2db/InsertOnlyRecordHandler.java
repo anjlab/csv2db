@@ -26,7 +26,7 @@ public class InsertOnlyRecordHandler extends MergeRecordHandler
     }
 
     @Override
-    public void handleRecord(Map<String, String> nameValues) throws SQLException, ConfigurationException, ScriptException
+    public void handleRecord(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
     {
         selectStatement.clearParameters();
 

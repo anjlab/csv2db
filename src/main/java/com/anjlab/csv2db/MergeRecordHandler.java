@@ -115,7 +115,7 @@ public class MergeRecordHandler extends AbstractRecordHandler
     private int numberOfStatementsInBatch;
 
     @Override
-    public void handleRecord(Map<String, String> nameValues) throws SQLException, ConfigurationException, ScriptException
+    public void handleRecord(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
     {
         selectStatement.clearParameters();
 
