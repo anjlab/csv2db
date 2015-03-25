@@ -31,7 +31,7 @@ public class Import
                 new Options()
                         .addOption("i", INPUT, true,
                                 "Input CSV file, or ZIP containing CSV files, or path to folder that contains CSV files")
-                        .addOption("u", INCLUDE, true,
+                        .addOption("n", INCLUDE, true,
                                 "Only process files whose names match this regexp (matches all files in input ZIP or input folder by default)")
                         .addOption("s", SKIP, true,
                                 "Skip files whose names match this regexp (skip nothing by default)")
