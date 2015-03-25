@@ -2,6 +2,8 @@ package com.anjlab.csv2db;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -20,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import javax.script.ScriptContext;
@@ -43,35 +46,69 @@ public class Importer
         this.config = config;
     }
 
-    public void performImport(String filename) throws ClassNotFoundException, SQLException, IOException, ScriptException, ConfigurationException
+    public void performImport(String filename)
+            throws ClassNotFoundException, SQLException, IOException, ScriptException, ConfigurationException
     {
-        //  Support reading ZIP archives
-        if (StringUtils.endsWithIgnoreCase(filename, ".zip"))
+        performImport(filename, new FilenameFilter()
         {
-            ZipFile zipFile = null;
-            try
+            @Override
+            public boolean accept(File dir, String name)
             {
-                zipFile = new ZipFile(new File(filename));
-                Enumeration<? extends ZipEntry> entries = zipFile.entries();
-                while (entries.hasMoreElements())
-                {
-                    ZipEntry entry = entries.nextElement();
+                return true;
+            }
+        });
+    }
 
-                    performImport(zipFile.getInputStream(entry));
-                }
-            }
-            finally
-            {
-                if (zipFile != null)
-                {
-                    zipFile.close();
-                }
-            }
+    public void performImport(String filename, FilenameFilter filenameFilter)
+            throws ClassNotFoundException, SQLException, IOException, ScriptException,
+            ConfigurationException
+    {
+        final File inputFile = new File(filename);
+
+        if (inputFile.isDirectory())
+        {
+            importFromDir(inputFile, filenameFilter);
+        }
+        else if (StringUtils.endsWithIgnoreCase(filename, ".zip"))
+        {
+            importFromZip(inputFile, filenameFilter);
         }
         else
         {
-            InputStream inputStream = new FileInputStream(new File(filename));
-            performImport(new AutoCloseInputStream(inputStream));
+            performImport(new AutoCloseInputStream(new FileInputStream(inputFile)));
+        }
+    }
+
+    private void importFromDir(final File input, FilenameFilter filenameFilter)
+            throws ClassNotFoundException, SQLException, IOException,
+            ScriptException, ConfigurationException, FileNotFoundException
+    {
+        for (File file : input.listFiles())
+        {
+            if (file.isFile() && filenameFilter.accept(null, file.getName()))
+            {
+                performImport(new AutoCloseInputStream(new FileInputStream(file)));
+            }
+        }
+    }
+
+    private void importFromZip(final File inputFile, FilenameFilter filenameFilter)
+            throws ZipException, IOException, ClassNotFoundException,
+            SQLException, ScriptException, ConfigurationException
+    {
+        try (ZipFile zipFile = new ZipFile(inputFile))
+        {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+
+            while (entries.hasMoreElements())
+            {
+                ZipEntry entry = entries.nextElement();
+
+                if (!entry.isDirectory() && filenameFilter.accept(null, entry.getName()))
+                {
+                    performImport(zipFile.getInputStream(entry));
+                }
+            }
         }
     }
 
