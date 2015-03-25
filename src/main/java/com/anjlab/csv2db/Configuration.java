@@ -478,11 +478,11 @@ public class Configuration
     public static void addOptions(Options options)
     {
         options
-                .addOption("m", MODE, false, "Operation mode (INSERT, MERGE, INSERTONLY)")
-                .addOption("d", DRIVER_CLASS, false, "JDBC driver class name")
-                .addOption("l", CONNECTION_URL, false, "JDBC connection URL")
-                .addOption("u", USERNAME, false, "Connection username")
-                .addOption("p", PASSWORD, false, "Connection password");
+                .addOption("m", MODE, true, "Operation mode (INSERT, MERGE, INSERTONLY)")
+                .addOption("d", DRIVER_CLASS, true, "JDBC driver class name")
+                .addOption("l", CONNECTION_URL, true, "JDBC connection URL")
+                .addOption("u", USERNAME, true, "Connection username")
+                .addOption("p", PASSWORD, true, "Connection password");
     }
 
     public Configuration overrideFrom(CommandLine cmd)
