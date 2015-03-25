@@ -21,14 +21,14 @@ public class Import
                 new Options()
                         .addOption("i", "input", true, "Input CSV file")
                         .addOption("c", "config", true, "Configuration file")
-                        .addOption("t", "numberOfThreads", true, "Number of threads")
+                        .addOption("t", "numberOfThreads", true, "Number of threads (default is number of processors available to JVM)")
                         .addOption("h", "help", false, "Prints this help");
 
         Configuration.addOptions(options);
 
         CommandLineParser parser = new PosixParser();
         CommandLine cmd;
-        int numberOfThreads = 1;
+        final int numberOfThreads;
         try
         {
             cmd = parser.parse(options, args);
@@ -39,13 +39,17 @@ public class Import
                 System.exit(1);
                 return;
             }
-            if (cmd.hasOption("numberOfThreads"))
-            {
-                numberOfThreads = Integer.parseInt(cmd.getOptionValue("numberOfThreads"));
-            }
+
+            final int availableProcessors = Runtime.getRuntime().availableProcessors();
+
+            numberOfThreads = cmd.hasOption("numberOfThreads")
+                    ? // number of threads will be in range [1; availableProcessors]
+                    Math.max(1, Math.min(Integer.parseInt(cmd.getOptionValue("numberOfThreads")), availableProcessors))
+                    : availableProcessors;
         }
         catch (Exception e)
         {
+            e.printStackTrace(System.err);
             printHelp(options);
             System.exit(1);
             return;
@@ -61,7 +65,7 @@ public class Import
 
         Configuration config = Configuration.fromJson(configFilename).overrideFrom(cmd);
 
-        Importer importer = new Importer(config, numberOfThreads < 1 ? 1 : numberOfThreads);
+        Importer importer = new Importer(config, numberOfThreads);
 
         importer.performImport(cmd.getOptionValue("input"));
     }
