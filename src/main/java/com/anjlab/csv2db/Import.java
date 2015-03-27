@@ -102,10 +102,16 @@ public class Import
             {
                 if (skip != null && skip.matcher(name).find())
                 {
+                    System.out.println("Skipping " + name);
                     return false;
                 }
 
-                return include == null || include.matcher(name).find();
+                boolean accept = include == null || include.matcher(name).find();
+                if (!accept)
+                {
+                    System.out.println("Skipping " + name);
+                }
+                return accept;
             }
         });
     }

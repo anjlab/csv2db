@@ -75,6 +75,7 @@ public class Importer
         }
         else
         {
+            System.out.println("Importing from " + inputFile.getName() + "...");
             performImport(new AutoCloseInputStream(new FileInputStream(inputFile)));
         }
     }
@@ -87,6 +88,7 @@ public class Importer
         {
             if (file.isFile() && filenameFilter.accept(null, file.getName()))
             {
+                System.out.println("Importing from " + file.getName() + "...");
                 performImport(new AutoCloseInputStream(new FileInputStream(file)));
             }
         }
@@ -106,6 +108,7 @@ public class Importer
 
                 if (!entry.isDirectory() && filenameFilter.accept(null, entry.getName()))
                 {
+                    System.out.println("Importing from " + entry.getName() + "...");
                     performImport(zipFile.getInputStream(entry));
                 }
             }
@@ -183,8 +186,8 @@ public class Importer
                             }
                             else
                             {
-                                //  Note that all emitted values (if any)
-                                //  will be handled by this same thread
+                                // Note that all emitted values (if any)
+                                // will be handled by this same thread
                                 config.getMap().eval(
                                         config.getScriptEngine(),
                                         nameValues,
