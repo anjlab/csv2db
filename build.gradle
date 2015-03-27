@@ -2,7 +2,7 @@ allprojects {
     apply plugin: 'eclipse'
 
     group = 'com.anjlab'
-    version = '3.0.0'
+    version = '3.0.1'
 }
 
 import org.gradle.plugins.ide.eclipse.model.*;
