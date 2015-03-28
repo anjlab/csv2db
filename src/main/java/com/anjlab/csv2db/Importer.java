@@ -198,20 +198,20 @@ public class Importer
                         }
                         queue.put(new String[] { terminalMessage });
                     }
-                    catch (BatchUpdateException bue)
+                    catch (Throwable t)
                     {
-                        bue.printStackTrace(System.err);
-                        SQLException se = bue.getNextException();
-                        while (se != null)
+                        if (t instanceof BatchUpdateException)
                         {
-                            System.err.println("Next SQLException in chain:");
-                            se.printStackTrace(System.err);
-                            se = se.getNextException();
+                            printBatchUpdateException((BatchUpdateException) t);
                         }
-                    }
-                    catch (Throwable e)
-                    {
-                        e.printStackTrace(System.err);
+                        else if (t.getCause() instanceof BatchUpdateException)
+                        {
+                            printBatchUpdateException((BatchUpdateException) t.getCause());
+                        }
+                        else
+                        {
+                            t.printStackTrace(System.err);
+                        }
                     }
                     finally
                     {
@@ -223,6 +223,18 @@ public class Importer
                         {
                             throw new RuntimeException("Problem has occurred while closing resources.", e);
                         }
+                    }
+                }
+
+                private void printBatchUpdateException(BatchUpdateException bue)
+                {
+                    bue.printStackTrace(System.err);
+                    SQLException se = bue.getNextException();
+                    while (se != null)
+                    {
+                        System.err.println("Next SQLException in chain:");
+                        se.printStackTrace(System.err);
+                        se = se.getNextException();
                     }
                 }
             });
