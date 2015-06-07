@@ -278,7 +278,7 @@ public class ImporterTest
 
         config.getCsvOptions().setEscapeChar((char) 0);
 
-        Importer importer = new Importer(config, 1);
+        Importer importer = new Importer(config, 2);
 
         Connection connection = importer.createConnection();
 

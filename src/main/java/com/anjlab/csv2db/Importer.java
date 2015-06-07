@@ -128,39 +128,35 @@ public class Importer
         {
             final RecordHandler strategy = getRecordHandlerStrategy(createConnection(), config.getScriptEngine());
 
+            // The map function accepts nameValues and the JavaScript emit callback function.
+            // The emit function should call back to Java, but since we can't create pure Java
+            // object representing JavaScript function we create this bridge that will in turn
+            // do the actual call to Java using the #handleRecord(...) interface method
+            final Object emitFunction;
+            {
+                String threadLocalEmit = "emit" + i;
+                String threadLocalStrategy = "strategy" + i;
+
+                StringBuilder emitFunctionDeclaration = new StringBuilder()
+                        .append("function ").append(threadLocalEmit).append("(nameValues) {")
+                        .append(threadLocalStrategy).append(".handleRecord(nameValues);")
+                        .append("}");
+
+                try
+                {
+                    config.getScriptEngine().getContext().setAttribute(
+                            threadLocalStrategy, strategy, ScriptContext.ENGINE_SCOPE);
+
+                    emitFunction = config.getScriptEngine().eval(emitFunctionDeclaration.toString());
+                }
+                catch (ScriptException e)
+                {
+                    throw new RuntimeException("Internal error", e);
+                }
+            }
+
             executorService.submit(new Runnable()
             {
-                //  The map function accepts nameValues and the JavaScript emit callback function.
-                //  The emit function should call back to Java, but since we can't create pure Java
-                //  object representing JavaScript function we create this bridge that will in turn
-                //  do the actual call to Java using the #handleRecord(...) interface method
-                private final ThreadLocal<Object> emitFunction = new ThreadLocal<Object>()
-                {
-                    @Override
-                    protected Object initialValue()
-                    {
-                        String threadLocalEmit = "emit" + Thread.currentThread().hashCode();
-                        String threadLocalStrategy = "strategy" + Thread.currentThread().hashCode();
-
-                        StringBuilder emitFunction = new StringBuilder()
-                            .append("function ").append(threadLocalEmit).append("(nameValues) {")
-                            .append(threadLocalStrategy).append(".handleRecord(nameValues);")
-                            .append("}");
-
-                        try
-                        {
-                            config.getScriptEngine().getContext().setAttribute(
-                                    threadLocalStrategy, strategy, ScriptContext.ENGINE_SCOPE);
-
-                            return config.getScriptEngine().eval(emitFunction.toString());
-                        }
-                        catch (ScriptException e)
-                        {
-                            throw new RuntimeException("Internal error", e);
-                        }
-                    }
-                };
-
                 @Override
                 public void run()
                 {
@@ -191,7 +187,7 @@ public class Importer
                                 config.getMap().eval(
                                         config.getScriptEngine(),
                                         nameValues,
-                                        emitFunction.get());
+                                        emitFunction);
                             }
 
                             nextLine = queue.take();
