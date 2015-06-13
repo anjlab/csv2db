@@ -2,49 +2,23 @@ package com.anjlab.csv2db;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 
-import org.apache.commons.lang3.ObjectUtils;
-
-public class MergeRecordHandler extends AbstractRecordHandler
+public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
 {
     protected AbstractRecordHandler insertRecordHandler;
 
-    protected PreparedStatement selectStatement;
     protected PreparedStatement updateStatement;
+
+    private int numberOfStatementsInBatch;
 
     public MergeRecordHandler(Configuration config, Connection connection, ScriptEngine scriptEngine) throws SQLException, ScriptException
     {
         super(config, scriptEngine, connection);
-
-        if (config.getPrimaryKeys() == null || config.getPrimaryKeys().isEmpty())
-        {
-            throw new RuntimeException("primaryKeys required for MERGE mode");
-        }
-
-        StringBuilder whereClause = new StringBuilder();
-
-        for (String columnName : config.getPrimaryKeys())
-        {
-            if (whereClause.length() > 0)
-            {
-                whereClause.append(" AND ");
-            }
-            whereClause.append(columnName).append(" = ?");
-        }
-
-        StringBuilder selectClause =
-                new StringBuilder("SELECT * FROM ")
-                        .append(config.getTargetTable())
-                        .append(" WHERE ")
-                        .append(whereClause);
-
-        this.selectStatement = connection.prepareStatement(selectClause.toString());
 
         StringBuilder setClause = new StringBuilder();
 
@@ -66,7 +40,6 @@ public class MergeRecordHandler extends AbstractRecordHandler
             {
                 setClause.append("?");
             }
-
         }
 
         for (String targetTableColumnName : getOrderedTableColumnNames())
@@ -84,7 +57,7 @@ public class MergeRecordHandler extends AbstractRecordHandler
                         .append(" SET ")
                         .append(setClause)
                         .append(" WHERE ")
-                        .append(whereClause);
+                        .append(buildWhereClause());
 
         this.updateStatement = connection.prepareStatement(updateClause.toString());
 
@@ -92,114 +65,49 @@ public class MergeRecordHandler extends AbstractRecordHandler
     }
 
     @Override
-    public void close()
+    protected void performInsert(Map<String, Object> nameValues)
+            throws SQLException, ConfigurationException, ScriptException
     {
-        try
-        {
-            checkBatchExecution(0);
-
-            insertRecordHandler.close();
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
-        finally
-        {
-            closeQuietly(selectStatement);
-            closeQuietly(updateStatement);
-            super.close();
-        }
+        insertRecordHandler.handleRecord(nameValues);
     }
 
-    private int numberOfStatementsInBatch;
-
     @Override
-    public void handleRecord(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
+    protected void performUpdate(Map<String, Object> nameValues)
+            throws ScriptException, SQLException, ConfigurationException
     {
-        selectStatement.clearParameters();
-
         int parameterIndex = 1;
 
+        //  Set parameters for the SET clause
+        for (String targetTableColumnName : getColumnNamesWithUpdateValues())
+        {
+            ValueDefinition definition = config.getUpdateValues().get(targetTableColumnName);
+
+            if (!definition.producesSQL())
+            {
+                Object columnValue = definition.eval(targetTableColumnName, nameValues, scriptEngine);
+
+                updateStatement.setObject(parameterIndex++, columnValue);
+            }
+        }
+
+        for (String targetTableColumnName : getOrderedTableColumnNames())
+        {
+            updateStatement.setObject(parameterIndex++, transform(targetTableColumnName, nameValues));
+        }
+
+        //  Set parameters for the WHERE clause
         for (String primaryKeyColumnName : config.getPrimaryKeys())
         {
-            selectStatement.setObject(parameterIndex++, transform(primaryKeyColumnName, nameValues));
+            Object primaryKeyColumnValue = nameValues.get(primaryKeyColumnName);
+
+            updateStatement.setObject(parameterIndex++, primaryKeyColumnValue);
         }
 
-        ResultSet resultSet = selectStatement.executeQuery();
+        numberOfStatementsInBatch++;
 
-        try
-        {
-            if (resultSet.next())
-            {
-                if (!config.isForceUpdate())
-                {
-                    boolean dataChanged = false;
+        updateStatement.addBatch();
 
-                    for (String targetTableColumnName : getOrderedTableColumnNames())
-                    {
-                        Object oldValue = resultSet.getObject(targetTableColumnName);
-                        Object newValue = transform(targetTableColumnName, nameValues);
-
-                        if (!ObjectUtils.equals(oldValue, newValue))
-                        {
-                            dataChanged = true;
-                            break;
-                        }
-                    }
-
-                    if (!dataChanged)
-                    {
-                        //  No need to update the data, because there's no changes
-                        return;
-                    }
-                }
-
-                //  Perform update
-                parameterIndex = 1;
-
-                //  Set parameters for the SET clause
-                for (String targetTableColumnName : getColumnNamesWithUpdateValues())
-                {
-                    ValueDefinition definition = config.getUpdateValues().get(targetTableColumnName);
-
-                    if (!definition.producesSQL())
-                    {
-                        Object columnValue = definition.eval(targetTableColumnName, nameValues, scriptEngine);
-
-                        updateStatement.setObject(parameterIndex++, columnValue);
-                    }
-                }
-
-                for (String targetTableColumnName : getOrderedTableColumnNames())
-                {
-                    updateStatement.setObject(parameterIndex++, transform(targetTableColumnName, nameValues));
-                }
-
-                //  Set parameters for the WHERE clause
-                for (String primaryKeyColumnName : config.getPrimaryKeys())
-                {
-                    Object primaryKeyColumnValue = resultSet.getObject(primaryKeyColumnName);
-
-                    updateStatement.setObject(parameterIndex++, primaryKeyColumnValue);
-                }
-
-                numberOfStatementsInBatch++;
-
-                updateStatement.addBatch();
-
-                checkBatchExecution(config.getBatchSize());
-            }
-            else
-            {
-                //  Perform insert
-                insertRecordHandler.handleRecord(nameValues);
-            }
-        }
-        finally
-        {
-            closeQuietly(resultSet);
-        }
+        checkBatchExecution(config.getBatchSize());
     }
 
     private void checkBatchExecution(int limit) throws SQLException
@@ -214,4 +122,25 @@ public class MergeRecordHandler extends AbstractRecordHandler
         }
     }
 
+    @Override
+    public void close()
+    {
+        try
+        {
+            super.executeBatch();
+
+            checkBatchExecution(0);
+
+            insertRecordHandler.close();
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+        finally
+        {
+            closeQuietly(updateStatement);
+            super.close();
+        }
+    }
 }

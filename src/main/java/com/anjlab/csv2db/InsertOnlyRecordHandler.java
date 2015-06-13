@@ -1,7 +1,6 @@
 package com.anjlab.csv2db;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 
@@ -19,50 +18,34 @@ import javax.script.ScriptException;
 public class InsertOnlyRecordHandler extends MergeRecordHandler
 {
 
-    public InsertOnlyRecordHandler(Configuration config, Connection connection, ScriptEngine scriptEngine) throws SQLException,
-            ScriptException
+    public InsertOnlyRecordHandler(Configuration config, Connection connection, ScriptEngine scriptEngine)
+            throws SQLException, ScriptException
     {
         super(config, connection, scriptEngine);
     }
 
     @Override
-    public void handleRecord(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
+    protected void performInsert(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
     {
-        selectStatement.clearParameters();
-
-        int parameterIndex = 1;
-
-        for (String primaryKeyColumnName : config.getPrimaryKeys())
+        if (config.isIgnoreNullPK())
         {
-            selectStatement.setObject(parameterIndex++, transform(primaryKeyColumnName, nameValues));
-        }
-
-        ResultSet resultSet = selectStatement.executeQuery();
-
-        try
-        {
-            if (resultSet.next())
+            for (String primaryKeyColumnName : config.getPrimaryKeys())
             {
-                return;
-            }
-            if (config.isIgnoreNullPK())
-            {
-                for (String primaryKeyColumnName : config.getPrimaryKeys())
+                if (transform(primaryKeyColumnName, nameValues) == null)
                 {
-                    if (transform(primaryKeyColumnName, nameValues) == null)
-                    {
-                        // don't perform an insert if any of the PK values are null
-                        return;
-                    }
+                    // don't perform an insert if any of the PK values are null
+                    return;
                 }
             }
-            // Perform insert
-            insertRecordHandler.handleRecord(nameValues);
         }
-        finally
-        {
-            closeQuietly(resultSet);
-        }
+
+        super.performInsert(nameValues);
     }
 
+    @Override
+    protected void performUpdate(Map<String, Object> nameValues)
+            throws SQLException, ConfigurationException, ScriptException
+    {
+        // Do nothing
+    }
 }
