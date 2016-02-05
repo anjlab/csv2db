@@ -12,6 +12,8 @@ public class InsertRecordHandler extends AbstractRecordHandler
 {
     private PreparedStatement insertStatement;
 
+    private int numberOfStatementsInBatch;
+
     public InsertRecordHandler(Configuration config, Connection connection, ScriptEngine scriptEngine) throws SQLException, ScriptException
     {
         super(config, scriptEngine, connection);
@@ -59,15 +61,23 @@ public class InsertRecordHandler extends AbstractRecordHandler
                 .append(valuesClause)
                 .append(")");
 
+        if (Import.isVerboseEnabled())
+        {
+            Import.logVerbose("INSERT statement used: " + insertClause);
+        }
+
         insertStatement = connection.prepareStatement(insertClause.toString());
     }
-
-    private int numberOfStatementsInBatch;
 
     @Override
     public void handleRecord(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
     {
         int parameterIndex = 1;
+
+        if (Import.isVerboseEnabled())
+        {
+            printNameValues(nameValues);
+        }
 
         for (String targetTableColumnName : getColumnNamesWithInsertValues())
         {
@@ -75,7 +85,12 @@ public class InsertRecordHandler extends AbstractRecordHandler
 
             if (!definition.producesSQL())
             {
-                Object columnValue = definition.eval(targetTableColumnName, nameValues, scriptEngine);
+                Object columnValue = eval(definition, targetTableColumnName, nameValues);
+
+                if (Import.isVerboseEnabled())
+                {
+                    printNameValue(targetTableColumnName, columnValue);
+                }
 
                 insertStatement.setObject(parameterIndex++, columnValue);
             }
@@ -83,7 +98,14 @@ public class InsertRecordHandler extends AbstractRecordHandler
 
         for (String targetTableColumnName : getOrderedTableColumnNames())
         {
-            insertStatement.setObject(parameterIndex++, transform(targetTableColumnName, nameValues));
+            Object columnValue = transform(targetTableColumnName, nameValues);
+
+            if (Import.isVerboseEnabled())
+            {
+                printNameValue(targetTableColumnName, columnValue);
+            }
+
+            insertStatement.setObject(parameterIndex++, columnValue);
         }
 
         numberOfStatementsInBatch++;

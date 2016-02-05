@@ -59,6 +59,11 @@ public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
                         .append(" WHERE ")
                         .append(buildWhereClause());
 
+        if (Import.isVerboseEnabled())
+        {
+            Import.logVerbose("UPDATE statement used: " + updateClause);
+        }
+
         this.updateStatement = connection.prepareStatement(updateClause.toString());
 
         this.insertRecordHandler = new InsertRecordHandler(config, connection, scriptEngine);
@@ -84,7 +89,12 @@ public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
 
             if (!definition.producesSQL())
             {
-                Object columnValue = definition.eval(targetTableColumnName, nameValues, scriptEngine);
+                Object columnValue = eval(definition, targetTableColumnName, nameValues);
+
+                if (Import.isVerboseEnabled())
+                {
+                    printNameValue(targetTableColumnName, columnValue);
+                }
 
                 updateStatement.setObject(parameterIndex++, columnValue);
             }
@@ -92,13 +102,25 @@ public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
 
         for (String targetTableColumnName : getOrderedTableColumnNames())
         {
-            updateStatement.setObject(parameterIndex++, transform(targetTableColumnName, nameValues));
+            Object columnValue = transform(targetTableColumnName, nameValues);
+
+            if (Import.isVerboseEnabled())
+            {
+                printNameValue(targetTableColumnName, columnValue);
+            }
+
+            updateStatement.setObject(parameterIndex++, columnValue);
         }
 
         //  Set parameters for the WHERE clause
         for (String primaryKeyColumnName : config.getPrimaryKeys())
         {
-            Object primaryKeyColumnValue = nameValues.get(primaryKeyColumnName);
+            Object primaryKeyColumnValue = transform(primaryKeyColumnName, nameValues);
+
+            if (Import.isVerboseEnabled())
+            {
+                printNameValue(primaryKeyColumnName, primaryKeyColumnValue);
+            }
 
             updateStatement.setObject(parameterIndex++, primaryKeyColumnValue);
         }

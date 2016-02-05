@@ -24,6 +24,6 @@ for ((i=1;i<10;i++)); do
     fi
 done
 
-java -cp $CLASSPATH \
+java $JAVA_OPTS -cp $CLASSPATH \
      com.anjlab.csv2db.Import \
      "${args[@]}"

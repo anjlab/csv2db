@@ -21,8 +21,10 @@ chmod +x gradlew
 ./build/libs/run.sh --help
 
 usage: ./run.sh
+ -b,--batchSize <arg>         Override batch size
  -c,--config <arg>            Configuration file
  -d,--driverClass <arg>       JDBC driver class name
+ -g,--progress                Display progress
  -h,--help                    Prints this help
  -i,--input <arg>             Input CSV file, or ZIP containing CSV files,
                               or path to folder that contains CSV files
@@ -37,9 +39,12 @@ usage: ./run.sh
  -t,--numberOfThreads <arg>   Number of threads (default is number of
                               processors available to JVM)
  -u,--username <arg>          Connection username
+ -v,--verbose                 Verbose output, useful for debugging
 ```
 
 Command line options take precedence over values from config file.
+
+`run.sh` supports `$JAVA_OPTS` environment variable.
 
 ### Pick right database driver
 
@@ -99,6 +104,9 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
     },
     "transientColumns": [
         "address_care_of"
+    ],
+    "syntheticColumns": [
+        "record_hash"
     ],
     "insertValues": {
         "id": { "sql": "nextval('company_id_sequence')" },
@@ -199,6 +207,8 @@ The effect is that only the rows that don't already exist in the database will b
 All `primaryKeys` should be present in `columnMappings` section, which means that CSV should contain `primaryKeys` data.
 
 `columnMappings` defines mapping between zero-based column indexes in CSV and target database table column names.
+
+`syntheticColumns` lists additional columns that need to be mapped to database columns. These additional columns can appear in rows as a result of `map` function (see below).
 
 `transientColumns` defines mapped columns as transient, which means they are only available for JavaScript functions in the `row` argument,
 but these columns won't be mapped to target table columns.

@@ -20,14 +20,14 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.io.input.AutoCloseInputStream;
 
-import au.com.bytecode.opencsv.CSVParser;
-import au.com.bytecode.opencsv.CSVReader;
-
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import au.com.bytecode.opencsv.CSVParser;
+import au.com.bytecode.opencsv.CSVReader;
 
 public class Configuration
 {
@@ -135,6 +135,7 @@ public class Configuration
      */
     private Map<Integer, String> columnMappings;
     private List<String> transientColumns;
+    private List<String> syntheticColumns;
     private Map<String, ValueDefinition> insertValues;
     private Map<String, ValueDefinition> updateValues;
     private Map<String, ValueDefinition> transform;
@@ -260,6 +261,16 @@ public class Configuration
     public void setTransientColumns(List<String> transientColumns)
     {
         this.transientColumns = transientColumns;
+    }
+
+    public List<String> getSyntheticColumns()
+    {
+        return syntheticColumns;
+    }
+
+    public void setSyntheticColumns(List<String> syntheticColumns)
+    {
+        this.syntheticColumns = syntheticColumns;
     }
 
     public FunctionReference getMap()
@@ -510,6 +521,11 @@ public class Configuration
         if (cmd.hasOption(PASSWORD))
         {
             connectionProperties.put("password", new StringLiteral(cmd.getOptionValue(PASSWORD)));
+        }
+
+        if (cmd.hasOption(Import.BATCH_SIZE))
+        {
+            setBatchSize(Integer.parseInt(cmd.getOptionValue(Import.BATCH_SIZE, "1")));
         }
 
         return this;

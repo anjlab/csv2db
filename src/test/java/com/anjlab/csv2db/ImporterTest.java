@@ -27,7 +27,7 @@ public class ImporterTest
 
         config.getCsvOptions().setEscapeChar((char) 0);
 
-        Importer importer = new Importer(config, 1);
+        Importer importer = new Importer(config, 1, null);
 
         Connection connection = importer.createConnection();
 
@@ -59,7 +59,7 @@ public class ImporterTest
         config.setOperationMode(OperationMode.INSERT);
         config.setBatchSize(3);
 
-        importer = new Importer(config, 1);
+        importer = new Importer(config, 1, null);
 
         connection = importer.createConnection();
 
@@ -86,7 +86,7 @@ public class ImporterTest
         config.setOperationMode(OperationMode.INSERTONLY);
         config.setBatchSize(3);
 
-        importer = new Importer(config, 1);
+        importer = new Importer(config, 1, null);
 
         connection = importer.createConnection();
 
@@ -114,7 +114,7 @@ public class ImporterTest
 
         config.getCsvOptions().setEscapeChar((char) 0);
 
-        Importer importer = new Importer(config, 4);
+        Importer importer = new Importer(config, 4, null);
 
         Connection connection = importer.createConnection();
 
@@ -146,7 +146,7 @@ public class ImporterTest
         config.setOperationMode(OperationMode.INSERT);
         config.setBatchSize(3);
 
-        importer = new Importer(config, 4);
+        importer = new Importer(config, 4, null);
 
         connection = importer.createConnection();
 
@@ -238,7 +238,7 @@ public class ImporterTest
 
         config.getCsvOptions().setEscapeChar((char) 0);
 
-        Importer importer = new Importer(config, 1);
+        Importer importer = new Importer(config, 1, null);
 
         Connection connection = importer.createConnection();
 
@@ -278,7 +278,7 @@ public class ImporterTest
 
         config.getCsvOptions().setEscapeChar((char) 0);
 
-        Importer importer = new Importer(config, 2);
+        Importer importer = new Importer(config, 2, null);
 
         Connection connection = importer.createConnection();
 

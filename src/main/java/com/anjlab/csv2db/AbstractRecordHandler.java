@@ -1,7 +1,5 @@
 package com.anjlab.csv2db;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,13 +11,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
+
 public abstract class AbstractRecordHandler implements RecordHandler
 {
+    private Set<String> transientColumns;
+
+    private List<String> orderedTableColumnNames;
+
+    private List<String> columnNamesWithInsertValues;
+
+    private List<String> columnNamesWithUpdateValues;
+
     protected Configuration config;
 
     protected final ScriptEngine scriptEngine;
-
-    private Set<String> transientColumns;
 
     protected Connection connection;
 
@@ -71,8 +78,6 @@ public abstract class AbstractRecordHandler implements RecordHandler
         }
     }
 
-    private List<String> orderedTableColumnNames;
-
     protected List<String> getOrderedTableColumnNames()
     {
         if (orderedTableColumnNames != null)
@@ -96,6 +101,23 @@ public abstract class AbstractRecordHandler implements RecordHandler
             }
         }
 
+        if (config.getSyntheticColumns() != null)
+        {
+            List<String> copy = new ArrayList<>();
+            copy.addAll(config.getSyntheticColumns());
+            Collections.sort(copy);
+
+            for (String columnName : copy)
+            {
+                // There shouldn't be any transient columns between synthetic ones,
+                // but we'll check this anyway for consistency
+                if (!isTransientColumn(columnName))
+                {
+                    columnNames.add(columnName);
+                }
+            }
+        }
+
         return orderedTableColumnNames = columnNames;
     }
 
@@ -103,8 +125,6 @@ public abstract class AbstractRecordHandler implements RecordHandler
     {
         return transientColumns.contains(columnName);
     }
-
-    private List<String> columnNamesWithInsertValues;
 
     protected List<String> getColumnNamesWithInsertValues()
     {
@@ -124,8 +144,6 @@ public abstract class AbstractRecordHandler implements RecordHandler
 
         return columnNamesWithInsertValues = columnNames;
     }
-
-    private List<String> columnNamesWithUpdateValues;
 
     protected List<String> getColumnNamesWithUpdateValues()
     {
@@ -162,16 +180,58 @@ public abstract class AbstractRecordHandler implements RecordHandler
                                     + "SQL expressions only supported for 'insertValues' and 'updateValues'.");
                 }
 
-                return transformer.eval(targetTableColumnName, nameValues, scriptEngine);
+                try
+                {
+                    return transformer.eval(targetTableColumnName, nameValues, scriptEngine);
+                }
+                catch (RuntimeException | ScriptException e)
+                {
+                    System.err.println("Error running transformation for column '" + targetTableColumnName + "'");
+                    throw e;
+                }
             }
         }
 
         return nameValues.get(targetTableColumnName);
     }
 
+    protected Object eval(ValueDefinition definition, String targetTableColumnName, Map<String, Object> nameValues)
+            throws ScriptException
+    {
+        try
+        {
+            return definition.eval(targetTableColumnName, nameValues, scriptEngine);
+        }
+        catch (RuntimeException | ScriptException e)
+        {
+            System.err.println("Error evaluating value for column '" + targetTableColumnName + "'");
+            throw e;
+        }
+    }
+
     @Override
     public void close()
     {
         closeQuietly(connection);
+    }
+
+    protected static void printNameValues(Map<String, Object> nameValues)
+    {
+        List<String> names = new ArrayList<>();
+        names.addAll(nameValues.keySet());
+        Collections.sort(names);
+
+        for (String name : names)
+        {
+            printNameValue(name, nameValues.get(name));
+        }
+    }
+
+    protected static void printNameValue(String name, Object value)
+    {
+        Import.logVerbose(name + "=" +
+                (value == null
+                        ? "null"
+                        : "'" + value + "', class=" + value.getClass().getName()));
     }
 }

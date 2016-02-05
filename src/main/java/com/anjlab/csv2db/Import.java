@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.regex.Pattern;
 
 import javax.script.ScriptException;
@@ -17,12 +19,17 @@ import org.apache.commons.cli.PosixParser;
 public class Import
 {
 
+    public static final String BATCH_SIZE = "batchSize";
     private static final String CONFIG = "config";
     private static final String HELP = "help";
     private static final String INCLUDE = "include";
     private static final String INPUT = "input";
     private static final String NUMBER_OF_THREADS = "numberOfThreads";
+    private static final String PROGRESS = "progress";
     private static final String SKIP = "skip";
+    private static final String VERBOSE = "verbose";
+
+    private static CommandLine cmd;
 
     public static void main(String[] args)
             throws IOException, ClassNotFoundException, SQLException, ScriptException, ConfigurationException
@@ -38,12 +45,14 @@ public class Import
                         .addOption("c", CONFIG, true, "Configuration file")
                         .addOption("t", NUMBER_OF_THREADS, true, "Number of threads"
                                 + " (default is number of processors available to JVM)")
+                        .addOption("b", BATCH_SIZE, true, "Override batch size")
+                        .addOption("v", VERBOSE, false, "Verbose output, useful for debugging")
+                        .addOption("g", PROGRESS, false, "Display progress")
                         .addOption("h", HELP, false, "Prints this help");
 
         Configuration.addOptions(options);
 
         CommandLineParser parser = new PosixParser();
-        CommandLine cmd;
         final int numberOfThreads;
         final Pattern include;
         final Pattern skip;
@@ -93,7 +102,14 @@ public class Import
 
         Configuration config = Configuration.fromJson(configFilename).overrideFrom(cmd);
 
-        Importer importer = new Importer(config, numberOfThreads);
+        PerformanceCounter perfCounter = null;
+
+        if (cmd.hasOption(PROGRESS))
+        {
+            perfCounter = new PerformanceCounter();
+        }
+
+        Importer importer = new Importer(config, numberOfThreads, perfCounter);
 
         importer.performImport(cmd.getOptionValue(INPUT), new FilenameFilter()
         {
@@ -122,4 +138,25 @@ public class Import
         formatter.printHelp("./run.sh", options);
     }
 
+    public static boolean isVerboseEnabled()
+    {
+        return cmd != null && cmd.hasOption(VERBOSE);
+    }
+
+    private static final ThreadLocal<SimpleDateFormat> dateFormat = new ThreadLocal<SimpleDateFormat>()
+    {
+        @Override
+        protected SimpleDateFormat initialValue()
+        {
+            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+        };
+    };
+
+    public static void logVerbose(String message)
+    {
+        System.out.println(
+                dateFormat.get().format(new Date())
+                        + " - " + Thread.currentThread().getName()
+                        + " - " + message);
+    }
 }

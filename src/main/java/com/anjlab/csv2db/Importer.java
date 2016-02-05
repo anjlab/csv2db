@@ -39,11 +39,13 @@ public class Importer
 
     private final Configuration config;
     private final int numberOfThreads;
+    private final PerformanceCounter perfCounter;
 
-    public Importer(Configuration config, int numberOfThreads)
+    public Importer(Configuration config, int numberOfThreads, PerformanceCounter perfCounter)
     {
         this.numberOfThreads = numberOfThreads;
         this.config = config;
+        this.perfCounter = perfCounter;
     }
 
     public void performImport(String filename)
@@ -253,6 +255,11 @@ public class Importer
             {
                 // XXX This may block if all handlers terminated with error
                 queue.put(nextLine);
+
+                if (perfCounter != null)
+                {
+                    perfCounter.lineEnqueued();
+                }
             }
             queue.put(new String[] { terminalMessage });
             executorService.awaitTermination(1, TimeUnit.DAYS);

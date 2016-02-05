@@ -68,6 +68,11 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
 
             statement = connection.prepareStatement(selectClause.toString());
 
+            if (Import.isVerboseEnabled())
+            {
+                Import.logVerbose("SELECT statement used: " + selectClause);
+            }
+
             selectStatements.put(batchSize, statement);
         }
 
@@ -97,6 +102,11 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
     @Override
     public void handleRecord(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
     {
+        if (Import.isVerboseEnabled())
+        {
+            printNameValues(nameValues);
+        }
+
         if (addBatch(nameValues))
         {
             return;
@@ -141,6 +151,11 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
                     {
                         Object oldValue = parsedResultSet.get(targetTableColumnName);
                         Object newValue = transform(targetTableColumnName, nameValues);
+
+                        if (Import.isVerboseEnabled())
+                        {
+                            printNameValue(targetTableColumnName, newValue);
+                        }
 
                         if (ObjectUtils.notEqual(oldValue, newValue))
                         {
@@ -197,7 +212,14 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
             Map<String, Object> nameValues = nameValuesBuffer.get(i).getValue();
             for (String primaryKeyColumnName : config.getPrimaryKeys())
             {
-                selectStatement.setObject(parameterIndex++, transform(primaryKeyColumnName, nameValues));
+                Object columnValue = transform(primaryKeyColumnName, nameValues);
+
+                if (Import.isVerboseEnabled())
+                {
+                    printNameValue(primaryKeyColumnName, columnValue);
+                }
+
+                selectStatement.setObject(parameterIndex++, columnValue);
             }
         }
 
