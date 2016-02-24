@@ -40,6 +40,7 @@ usage: ./run.sh
                               processors available to JVM)
  -u,--username <arg>          Connection username
  -v,--verbose                 Verbose output, useful for debugging
+ -V,--verbose2                Print some internal statistics every 1 minute
 ```
 
 Command line options take precedence over values from config file.
@@ -223,7 +224,9 @@ but these columns won't be mapped to target table columns.
 
 `forceUpdate` forces executing UPDATE statements for every row even if the data from CSV for this row is the same as in the database table. This may be needed if you want to force applying values from `updateValues` section. Default value is `false` and it is only used in `MERGE` mode.
 
-`ignoreNullPK` ignores any row where any of the PK values in the data are null. This may be needed if you want to top up a reference table from a data table with missing reference values where some of them are null. Default value is `false` and it is only used in `INSERTONLY` mode.
+`ignoreNullPK` ignores any row where any of the PK values in the data are null. This may be needed if you want to top up a reference table from a data table with missing reference values where some of them are `null`. Default value is `false` and it is only used in `INSERTONLY` mode.
+
+`ignoreDuplicatePK` ignore rows having exactly the same values of PK when they appear in the same insert batch (see `batchSize`). Only first record from the batch will be used for insertion.
 
 `batchSize` size of INSERT/UPDATE batches. Default value is 100.
 

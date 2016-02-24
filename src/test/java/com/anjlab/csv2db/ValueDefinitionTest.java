@@ -12,25 +12,26 @@ public class ValueDefinitionTest
     public void toJson()
     {
         Configuration configuration = new Configuration();
-        
+
         Map<String, ValueDefinition> insertValues = new HashMap<String, ValueDefinition>();
         configuration.setInsertValues(insertValues);
-        
+
         insertValues.put("column", new StringLiteral("constant"));
-        
-        Assert.assertEquals("{\"insertValues\":{\"column\":\"constant\"},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false}",
+
+        Assert.assertEquals(
+                "{\"insertValues\":{\"column\":\"constant\"},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
                 configuration.toJson());
-        
+
         insertValues.put("column", new SqlLiteral("clause"));
-        
+
         Assert.assertEquals(
-                "{\"insertValues\":{\"column\":{\"sql\":\"clause\"}},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false}",
+                "{\"insertValues\":{\"column\":{\"sql\":\"clause\"}},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
                 configuration.toJson());
-        
+
         insertValues.put("column", new FunctionReference("name"));
-        
+
         Assert.assertEquals(
-                "{\"insertValues\":{\"column\":{\"function\":\"name\"}},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false}",
+                "{\"insertValues\":{\"column\":{\"function\":\"name\"}},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
                 configuration.toJson());
     }
 }

@@ -8,17 +8,28 @@ import java.util.Map;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 
+import com.codahale.metrics.Timer;
+
 public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
 {
     protected AbstractRecordHandler insertRecordHandler;
 
     protected PreparedStatement updateStatement;
 
+    private final Timer updateStatementTimer;
+
     private int numberOfStatementsInBatch;
 
-    public MergeRecordHandler(Configuration config, Connection connection, ScriptEngine scriptEngine) throws SQLException, ScriptException
+    public MergeRecordHandler(
+            Configuration config,
+            Connection connection,
+            ScriptEngine scriptEngine,
+            Router router,
+            int threadId,
+            int threadCount)
+                    throws SQLException, ScriptException
     {
-        super(config, scriptEngine, connection);
+        super(config, scriptEngine, connection, router, threadId, threadCount);
 
         StringBuilder setClause = new StringBuilder();
 
@@ -66,12 +77,33 @@ public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
 
         this.updateStatement = connection.prepareStatement(updateClause.toString());
 
-        this.insertRecordHandler = new InsertRecordHandler(config, connection, scriptEngine);
+        this.insertRecordHandler = new InsertRecordHandler(
+                config, connection, scriptEngine, router, threadId, threadCount);
+
+        this.updateStatementTimer = Import.METRIC_REGISTRY.timer("thread-" + threadId + ".updates");
+    }
+
+    @Override
+    protected void enableBatchExecution() throws SQLException
+    {
+        super.enableBatchExecution();
+
+        checkBatchExecution(config.getBatchSize());
+
+        insertRecordHandler.enableBatchExecution();
+    }
+
+    @Override
+    protected void disableBatchExecution()
+    {
+        super.disableBatchExecution();
+
+        insertRecordHandler.disableBatchExecution();
     }
 
     @Override
     protected void performInsert(Map<String, Object> nameValues)
-            throws SQLException, ConfigurationException, ScriptException
+            throws SQLException, ConfigurationException, ScriptException, InterruptedException
     {
         insertRecordHandler.handleRecord(nameValues);
     }
@@ -134,9 +166,21 @@ public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
 
     private void checkBatchExecution(int limit) throws SQLException
     {
+        if (batchExecutionDisabled)
+        {
+            return;
+        }
+
         if (numberOfStatementsInBatch >= limit)
         {
-            updateStatement.executeBatch();
+            Import.measureTime(updateStatementTimer, new VoidCallable<SQLException>()
+            {
+                @Override
+                public void run() throws SQLException
+                {
+                    updateStatement.executeBatch();
+                }
+            });
 
             updateStatement.clearParameters();
 

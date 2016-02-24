@@ -30,7 +30,21 @@ public abstract class AbstractRecordHandler implements RecordHandler
 
     protected Connection connection;
 
-    public AbstractRecordHandler(Configuration config, ScriptEngine scriptEngine, Connection connection)
+    protected boolean batchExecutionDisabled;
+
+    protected final Router router;
+
+    protected final int threadId;
+
+    protected final int threadCount;
+
+    public AbstractRecordHandler(
+            Configuration config,
+            ScriptEngine scriptEngine,
+            Connection connection,
+            Router router,
+            int threadId,
+            int threadCount)
     {
         this.config = config;
         this.scriptEngine = scriptEngine;
@@ -40,6 +54,9 @@ public abstract class AbstractRecordHandler implements RecordHandler
         {
             this.transientColumns.addAll(config.getTransientColumns());
         }
+        this.router = router;
+        this.threadId = threadId;
+        this.threadCount = threadCount;
     }
 
     protected void closeQuietly(PreparedStatement statement)
@@ -234,4 +251,15 @@ public abstract class AbstractRecordHandler implements RecordHandler
                         ? "null"
                         : "'" + value + "', class=" + value.getClass().getName()));
     }
+
+    protected void enableBatchExecution() throws SQLException
+    {
+        batchExecutionDisabled = false;
+    }
+
+    protected void disableBatchExecution()
+    {
+        batchExecutionDisabled = true;
+    }
+
 }

@@ -145,6 +145,7 @@ public class Configuration
     private CSVOptions csvOptions;
     private boolean forceUpdate;
     private boolean ignoreNullPK;
+    private boolean ignoreDuplicatePK;
 
     private transient FileResolver fileResolver;
     private transient ScriptEngine scriptEngine;
@@ -430,6 +431,16 @@ public class Configuration
         this.ignoreNullPK = ignoreNullPK;
     }
 
+    public boolean isIgnoreDuplicatePK()
+    {
+        return ignoreDuplicatePK;
+    }
+
+    public void setIgnoreDuplicatePK(boolean ignoreDuplicatePK)
+    {
+        this.ignoreDuplicatePK = ignoreDuplicatePK;
+    }
+
     public FileResolver getFileResolver()
     {
         return fileResolver;
@@ -529,5 +540,22 @@ public class Configuration
         }
 
         return this;
+    }
+
+    public String joinPrimaryKeys(Map<String, Object> nameValues)
+    {
+        StringBuilder builder = new StringBuilder();
+        for (String primaryKeyColumnName : getPrimaryKeys())
+        {
+            if (builder.length() > 0)
+            {
+                builder.append(", ");
+            }
+            builder
+                    .append(primaryKeyColumnName)
+                    .append("=")
+                    .append(String.valueOf(nameValues.get(primaryKeyColumnName)));
+        }
+        return builder.toString();
     }
 }

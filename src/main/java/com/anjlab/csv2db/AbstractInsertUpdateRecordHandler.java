@@ -9,26 +9,37 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.tuple.Pair;
+
+import com.codahale.metrics.Timer;
 
 public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHandler
 {
     private Map<Integer, PreparedStatement> selectStatements;
 
+    private final Timer selectStatementTimer;
+
     private StringBuilder whereClause;
 
-    private final List<Pair<Integer, Map<String, Object>>> nameValuesBuffer;
+    private final List<Pair<String, Map<String, Object>>> nameValuesBuffer;
 
-    public AbstractInsertUpdateRecordHandler(Configuration config, ScriptEngine scriptEngine, Connection connection) throws SQLException
+    public AbstractInsertUpdateRecordHandler(
+            Configuration config,
+            ScriptEngine scriptEngine,
+            Connection connection,
+            Router router,
+            int threadId,
+            int threadCount)
+                    throws SQLException
     {
-        super(config, scriptEngine, connection);
+        super(config, scriptEngine, connection, router, threadId, threadCount);
 
         if (config.getPrimaryKeys() == null || config.getPrimaryKeys().isEmpty())
         {
@@ -38,6 +49,8 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
         nameValuesBuffer = new ArrayList<>(config.getBatchSize());
 
         selectStatements = new HashMap<>();
+
+        selectStatementTimer = Import.METRIC_REGISTRY.timer("thread-" + threadId + ".selects");
     }
 
     private PreparedStatement getOrCreateSelectStatement(int batchSize) throws SQLException
@@ -100,7 +113,8 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
     }
 
     @Override
-    public void handleRecord(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
+    public void handleRecord(Map<String, Object> nameValues)
+            throws SQLException, ConfigurationException, ScriptException, InterruptedException
     {
         if (Import.isVerboseEnabled())
         {
@@ -115,7 +129,7 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
         executeBatch();
     }
 
-    protected void executeBatch() throws SQLException, ConfigurationException, ScriptException
+    protected void executeBatch() throws SQLException, ConfigurationException, ScriptException, InterruptedException
     {
         if (nameValuesBuffer.isEmpty())
         {
@@ -124,18 +138,22 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
 
         try (ResultSet resultSet = selectBatch())
         {
+            disableBatchExecution();
+
             handleRecordsBatch(toPrimaryKeysHashMap(resultSet));
         }
         finally
         {
             nameValuesBuffer.clear();
+
+            enableBatchExecution();
         }
     }
 
-    private void handleRecordsBatch(Map<Integer, Map<String, Object>> primaryKeysHashMap)
-            throws SQLException, ConfigurationException, ScriptException
+    private void handleRecordsBatch(Map<String, Map<String, Object>> primaryKeysHashMap)
+            throws SQLException, ConfigurationException, ScriptException, InterruptedException
     {
-        for (Pair<Integer, Map<String, Object>> pair : nameValuesBuffer)
+        for (Pair<String, Map<String, Object>> pair : nameValuesBuffer)
         {
             Map<String, Object> nameValues = pair.getValue();
 
@@ -175,14 +193,17 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
             }
             else
             {
+                // Note: If INSERT batch will be flushed during this run,
+                // we may need to re-select remaining records from nameValuesBuffer.
+                // To avoid that we temporary disable batch executions
                 performInsert(nameValues);
             }
         }
     }
 
-    private Map<Integer, Map<String, Object>> toPrimaryKeysHashMap(ResultSet resultSet) throws SQLException
+    private Map<String, Map<String, Object>> toPrimaryKeysHashMap(ResultSet resultSet) throws SQLException
     {
-        final Map<Integer, Map<String, Object>> result = new HashMap<>();
+        final Map<String, Map<String, Object>> result = new HashMap<>();
 
         while (resultSet.next())
         {
@@ -193,7 +214,7 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
                 parsedResultSet.put(columnName, resultSet.getObject(columnName));
             }
 
-            result.put(hashPrimaryKeys(parsedResultSet), parsedResultSet);
+            result.put(config.joinPrimaryKeys(parsedResultSet), parsedResultSet);
         }
 
         return result;
@@ -223,28 +244,27 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
             }
         }
 
-        return selectStatement.executeQuery();
+        return Import.measureTime(selectStatementTimer, new Callable<ResultSet>()
+        {
+            @Override
+            public ResultSet call() throws SQLException
+            {
+                return selectStatement.executeQuery();
+            }
+        });
     }
 
     private boolean addBatch(Map<String, Object> nameValues)
     {
-        nameValuesBuffer.add(Pair.of(hashPrimaryKeys(nameValues), nameValues));
+        String keys = config.joinPrimaryKeys(nameValues);
+
+        nameValuesBuffer.add(Pair.of(keys, nameValues));
 
         return nameValuesBuffer.size() < config.getBatchSize();
     }
 
-    private int hashPrimaryKeys(Map<String, Object> nameValues)
-    {
-        HashCodeBuilder hashCodeBuilder = new HashCodeBuilder(11, 17);
-        for (String primaryKeyColumnName : config.getPrimaryKeys())
-        {
-            hashCodeBuilder.append(ObjectUtils.defaultIfNull(nameValues.get(primaryKeyColumnName), "null"));
-        }
-        return hashCodeBuilder.toHashCode();
-    }
-
     protected abstract void performInsert(Map<String, Object> nameValues)
-            throws SQLException, ConfigurationException, ScriptException;
+            throws SQLException, ConfigurationException, ScriptException, InterruptedException;
 
     protected abstract void performUpdate(Map<String, Object> nameValues)
             throws SQLException, ConfigurationException, ScriptException;

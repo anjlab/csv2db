@@ -1,5 +1,6 @@
 package com.anjlab.csv2db;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -15,9 +16,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +29,9 @@ import javax.script.ScriptException;
 
 import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.lang3.StringUtils;
+
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Timer.Context;
 
 import au.com.bytecode.opencsv.CSVReader;
 
@@ -49,7 +50,7 @@ public class Importer
     }
 
     public void performImport(String filename)
-            throws ClassNotFoundException, SQLException, IOException, ScriptException, ConfigurationException
+            throws ClassNotFoundException, SQLException, IOException, ScriptException, ConfigurationException, InterruptedException
     {
         performImport(filename, new FilenameFilter()
         {
@@ -63,7 +64,7 @@ public class Importer
 
     public void performImport(String filename, FilenameFilter filenameFilter)
             throws ClassNotFoundException, SQLException, IOException, ScriptException,
-            ConfigurationException
+            ConfigurationException, InterruptedException
     {
         final File inputFile = new File(filename);
 
@@ -84,7 +85,7 @@ public class Importer
 
     private void importFromDir(final File input, FilenameFilter filenameFilter)
             throws ClassNotFoundException, SQLException, IOException,
-            ScriptException, ConfigurationException, FileNotFoundException
+            ScriptException, ConfigurationException, FileNotFoundException, InterruptedException
     {
         for (File file : input.listFiles())
         {
@@ -98,7 +99,7 @@ public class Importer
 
     private void importFromZip(final File inputFile, FilenameFilter filenameFilter)
             throws ZipException, IOException, ClassNotFoundException,
-            SQLException, ScriptException, ConfigurationException
+            SQLException, ScriptException, ConfigurationException, InterruptedException
     {
         try (ZipFile zipFile = new ZipFile(inputFile))
         {
@@ -117,27 +118,98 @@ public class Importer
         }
     }
 
-    public void performImport(InputStream input) throws ClassNotFoundException, SQLException, IOException, ScriptException, ConfigurationException
+    public void performImport(InputStream input)
+            throws ClassNotFoundException, SQLException, IOException, ScriptException, ConfigurationException, InterruptedException
     {
-        // each thread will take batch of lines with the size of batchSize from the queue,
-        // that's why it's necessary always to have enough lines for those who read from it's thread
-        int queueSize = config.getBatchSize() * numberOfThreads;
         ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
-        final BlockingQueue<String[]> queue = new ArrayBlockingQueue<String[]>(queueSize);
-        final String terminalMessage = UUID.randomUUID().toString();
+
+        Mediator mediator = new SharedBlockingQueueMediator(config, numberOfThreads);
 
         for (int i = 0; i < numberOfThreads; i++)
         {
-            final RecordHandler strategy = getRecordHandlerStrategy(createConnection(), config.getScriptEngine());
+            executorService.submit(createConsumer(mediator, i));
+        }
+
+        executorService.shutdown();
+
+        readInput(input, mediator);
+
+        executorService.awaitTermination(1, TimeUnit.DAYS);
+    }
+
+    private void readInput(InputStream input, Mediator mediator) throws InterruptedException
+    {
+        CSVReader reader = null;
+        try
+        {
+            Configuration.CSVOptions csvOptions = config.getCsvOptions();
+            reader = new CSVReader(new InputStreamReader(input),
+                    csvOptions.getSeparatorChar(),
+                    csvOptions.getQuoteChar(),
+                    csvOptions.getEscapeChar(),
+                    csvOptions.getSkipLines(),
+                    csvOptions.isStrictQuotes(),
+                    csvOptions.isIgnoreLeadingWhiteSpace());
+
+            String[] nextLine;
+            while ((nextLine = reader.readNext()) != null)
+            {
+                // XXX This may block if all handlers terminated with error
+                mediator.dispatch(nextLine);
+
+                if (perfCounter != null)
+                {
+                    perfCounter.lineEnqueued();
+                }
+            }
+            mediator.producerDone();
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+        finally
+        {
+            closeQuietly(reader);
+        }
+    }
+
+    private void closeQuietly(Closeable closeable)
+    {
+        if (closeable != null)
+        {
+            try
+            {
+                closeable.close();
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace(System.err);
+            }
+        }
+    }
+
+    private Runnable createConsumer(final Mediator mediator, final int threadId)
+            throws SQLException, ScriptException, ClassNotFoundException, ConfigurationException
+    {
+        return new Runnable()
+        {
+            final RecordHandler strategy = getRecordHandlerStrategy(
+                    createConnection(), config.getScriptEngine(), mediator, threadId);
+
+            final Timer recordsMeter;
+
+            // TODO No need building & binding emitFunction if `config.getMap() == null`
 
             // The map function accepts nameValues and the JavaScript emit callback function.
             // The emit function should call back to Java, but since we can't create pure Java
             // object representing JavaScript function we create this bridge that will in turn
             // do the actual call to Java using the #handleRecord(...) interface method
             final Object emitFunction;
+
             {
-                String threadLocalEmit = "emit" + i;
-                String threadLocalStrategy = "strategy" + i;
+                String threadLocalEmit = "emit" + threadId;
+                String threadLocalStrategy = "strategy" + threadId;
 
                 StringBuilder emitFunctionDeclaration = new StringBuilder()
                         .append("function ").append(threadLocalEmit).append("(nameValues) {")
@@ -155,130 +227,153 @@ public class Importer
                 {
                     throw new RuntimeException("Internal error", e);
                 }
+
+                recordsMeter = Import.isMetricsEnabled()
+                        ? Import.METRIC_REGISTRY.timer("thread-" + threadId + ".records")
+                        : null;
             }
 
-            executorService.submit(new Runnable()
+            @Override
+            public void run()
             {
-                @Override
-                public void run()
+                try
+                {
+                    readLines(mediator, threadId);
+                }
+                catch (Throwable t)
+                {
+                    if (t instanceof BatchUpdateException)
+                    {
+                        printBatchUpdateException((BatchUpdateException) t);
+                    }
+                    else if (t.getCause() instanceof BatchUpdateException)
+                    {
+                        printBatchUpdateException((BatchUpdateException) t.getCause());
+                    }
+                    else
+                    {
+                        t.printStackTrace(System.err);
+                    }
+                }
+                finally
                 {
                     try
                     {
-                        String[] nextLine = queue.take();
-                        while (nextLine.length != 0 && !terminalMessage.equals((nextLine)[0]))
-                        {
-                            // nextLine[] is an array of values from the line
-                            Map<String, Object> nameValues = new HashMap<String, Object>();
-                            for (Map.Entry<Integer, String> mapping : config.getColumnMappings().entrySet())
-                            {
-                                String value = nextLine[mapping.getKey()];
-
-                                String targetColumnName = mapping.getValue();
-
-                                nameValues.put(targetColumnName, value);
-                            }
-
-                            if (config.getMap() == null)
-                            {
-                                strategy.handleRecord(nameValues);
-                            }
-                            else
-                            {
-                                // Note that all emitted values (if any)
-                                // will be handled by this same thread
-                                config.getMap().eval(
-                                        config.getScriptEngine(),
-                                        nameValues,
-                                        emitFunction);
-                            }
-
-                            nextLine = queue.take();
-                        }
-                        queue.put(new String[] { terminalMessage });
+                        mediator.consumerDone(threadId);
                     }
-                    catch (Throwable t)
+                    catch (InterruptedException e)
                     {
-                        if (t instanceof BatchUpdateException)
+                        e.printStackTrace(System.err);
+                    }
+
+                    try
+                    {
+                        strategy.close();
+                    }
+                    catch (Exception e)
+                    {
+                        throw new RuntimeException("Problem has occurred while closing resources.", e);
+                    }
+                }
+            }
+
+            private void readLines(final Mediator mediator, final int threadId)
+                    throws InterruptedException, SQLException, ConfigurationException, ScriptException
+            {
+                Object next = mediator.take(threadId);
+
+                while (true)
+                {
+                    Context time = null;
+
+                    if (recordsMeter != null)
+                    {
+                        time = recordsMeter.time();
+                    }
+
+                    try
+                    {
+                        if (!handleRecord(next))
                         {
-                            printBatchUpdateException((BatchUpdateException) t);
+                            break;
                         }
-                        else if (t.getCause() instanceof BatchUpdateException)
-                        {
-                            printBatchUpdateException((BatchUpdateException) t.getCause());
-                        }
-                        else
-                        {
-                            t.printStackTrace(System.err);
-                        }
+
+                        next = mediator.take(threadId);
                     }
                     finally
                     {
-                        try
+                        if (time != null)
                         {
-                            strategy.close();
-                        }
-                        catch (Exception e)
-                        {
-                            throw new RuntimeException("Problem has occurred while closing resources.", e);
+                            time.stop();
                         }
                     }
                 }
+            }
 
-                private void printBatchUpdateException(BatchUpdateException bue)
+            @SuppressWarnings("unchecked")
+            private boolean handleRecord(Object record)
+                    throws SQLException, ConfigurationException, ScriptException, InterruptedException
+            {
+                if (record instanceof String[])
                 {
-                    bue.printStackTrace(System.err);
-                    SQLException se = bue.getNextException();
-                    while (se != null)
+                    // record is an array of values from CSV line
+                    String[] columns = (String[]) record;
+
+                    if (columns.length == 0)
                     {
-                        System.err.println("Next SQLException in chain:");
-                        se.printStackTrace(System.err);
-                        se = se.getNextException();
+                        return false;
+                    }
+
+                    Map<String, Object> nameValues = new HashMap<String, Object>();
+                    for (Map.Entry<Integer, String> mapping : config.getColumnMappings().entrySet())
+                    {
+                        String value = columns[mapping.getKey()];
+
+                        String targetColumnName = mapping.getValue();
+
+                        nameValues.put(targetColumnName, value);
+                    }
+
+                    if (config.getMap() == null)
+                    {
+                        strategy.handleRecord(nameValues);
+                    }
+                    else
+                    {
+                        // Note that all emitted values (if any)
+                        // will be handled by this same thread
+                        config.getMap().eval(
+                                config.getScriptEngine(),
+                                nameValues,
+                                emitFunction);
                     }
                 }
-            });
-        }
-        executorService.shutdown();
-        CSVReader reader = null;
-        try
-        {
-            Configuration.CSVOptions csvOptions = config.getCsvOptions();
-            reader = new CSVReader(new InputStreamReader(input),
-                    csvOptions.getSeparatorChar(),
-                    csvOptions.getQuoteChar(),
-                    csvOptions.getEscapeChar(),
-                    csvOptions.getSkipLines(),
-                    csvOptions.isStrictQuotes(),
-                    csvOptions.isIgnoreLeadingWhiteSpace());
-
-            String[] nextLine;
-            while ((nextLine = reader.readNext()) != null)
-            {
-                // XXX This may block if all handlers terminated with error
-                queue.put(nextLine);
-
-                if (perfCounter != null)
+                else if (record instanceof Map)
                 {
-                    perfCounter.lineEnqueued();
+                    // re-routed record
+                    strategy.handleRecord((Map<String, Object>) record);
+                }
+                else
+                {
+                    // null-value?
+                    return false;
+                }
+
+                return true;
+            }
+
+            private void printBatchUpdateException(BatchUpdateException bue)
+            {
+                bue.printStackTrace(System.err);
+                SQLException se = bue.getNextException();
+                while (se != null)
+                {
+                    System.err.println("Next SQLException in chain:");
+                    se.printStackTrace(System.err);
+                    se = se.getNextException();
                 }
             }
-            queue.put(new String[] { terminalMessage });
-            executorService.awaitTermination(1, TimeUnit.DAYS);
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
-        catch (InterruptedException e)
-        {
-            System.err.println("Interrupted");
-        }
-        finally
-        {
-            if(reader != null)
-            {
-                reader.close();
-            }
-        }
+        };
     }
 
     public Connection createConnection() throws ClassNotFoundException, SQLException, ConfigurationException
@@ -293,16 +388,19 @@ public class Importer
         return DriverManager.getConnection(config.getConnectionUrl(), properties);
     }
 
-    private RecordHandler getRecordHandlerStrategy(Connection connection, ScriptEngine scriptEngine) throws SQLException, ScriptException
+    private RecordHandler getRecordHandlerStrategy(
+            Connection connection, ScriptEngine scriptEngine,
+            Router router, int threadId)
+                    throws SQLException, ScriptException
     {
         switch (config.getOperationMode())
         {
         case INSERT:
-            return new InsertRecordHandler(config, connection, scriptEngine);
+            return new InsertRecordHandler(config, connection, scriptEngine, router, threadId, numberOfThreads);
         case INSERTONLY:
-            return new InsertOnlyRecordHandler(config, connection, scriptEngine);
+            return new InsertOnlyRecordHandler(config, connection, scriptEngine, router, threadId, numberOfThreads);
         default:
-            return new MergeRecordHandler(config, connection, scriptEngine);
+            return new MergeRecordHandler(config, connection, scriptEngine, router, threadId, numberOfThreads);
         }
     }
 

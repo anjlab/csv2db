@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import javax.script.ScriptException;
@@ -15,6 +17,11 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
+
+import com.codahale.metrics.ConsoleReporter;
+import com.codahale.metrics.Metric;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 
 public class Import
 {
@@ -28,11 +35,15 @@ public class Import
     private static final String PROGRESS = "progress";
     private static final String SKIP = "skip";
     private static final String VERBOSE = "verbose";
+    private static final String VERBOSE2 = "verbose2";
 
     private static CommandLine cmd;
 
+    public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
+
     public static void main(String[] args)
-            throws IOException, ClassNotFoundException, SQLException, ScriptException, ConfigurationException
+            throws IOException, ClassNotFoundException, SQLException,
+            ScriptException, ConfigurationException, InterruptedException
     {
         Options options =
                 new Options()
@@ -47,6 +58,7 @@ public class Import
                                 + " (default is number of processors available to JVM)")
                         .addOption("b", BATCH_SIZE, true, "Override batch size")
                         .addOption("v", VERBOSE, false, "Verbose output, useful for debugging")
+                        .addOption("V", VERBOSE2, false, "Print some internal statistics every 1 minute")
                         .addOption("g", PROGRESS, false, "Display progress")
                         .addOption("h", HELP, false, "Prints this help");
 
@@ -102,6 +114,16 @@ public class Import
 
         Configuration config = Configuration.fromJson(configFilename).overrideFrom(cmd);
 
+        if (isMetricsEnabled())
+        {
+            final ConsoleReporter reporter = ConsoleReporter.forRegistry(Import.METRIC_REGISTRY)
+                    .convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS)
+                    .build();
+
+            reporter.start(1, TimeUnit.MINUTES);
+        }
+
         PerformanceCounter perfCounter = null;
 
         if (cmd.hasOption(PROGRESS))
@@ -143,6 +165,11 @@ public class Import
         return cmd != null && cmd.hasOption(VERBOSE);
     }
 
+    public static boolean isMetricsEnabled()
+    {
+        return cmd != null && cmd.hasOption(VERBOSE2);
+    }
+
     private static final ThreadLocal<SimpleDateFormat> dateFormat = new ThreadLocal<SimpleDateFormat>()
     {
         @Override
@@ -158,5 +185,30 @@ public class Import
                 dateFormat.get().format(new Date())
                         + " - " + Thread.currentThread().getName()
                         + " - " + message);
+    }
+
+    public static <T extends Metric> T registerMetric(String name, T metric)
+    {
+        METRIC_REGISTRY.remove(name);
+        return METRIC_REGISTRY.register(name, metric);
+    }
+
+    public static <T> T measureTime(Timer timer, Callable<T> op)
+    {
+        try
+        {
+            if (timer == null)
+            {
+                return op.call();
+            }
+            else
+            {
+                return timer.time(op);
+            }
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 }

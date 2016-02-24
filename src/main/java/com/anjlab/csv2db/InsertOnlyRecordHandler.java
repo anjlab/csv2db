@@ -18,14 +18,21 @@ import javax.script.ScriptException;
 public class InsertOnlyRecordHandler extends MergeRecordHandler
 {
 
-    public InsertOnlyRecordHandler(Configuration config, Connection connection, ScriptEngine scriptEngine)
-            throws SQLException, ScriptException
+    public InsertOnlyRecordHandler(
+            Configuration config,
+            Connection connection,
+            ScriptEngine scriptEngine,
+            Router router,
+            int threadId,
+            int threadCount)
+                    throws SQLException, ScriptException
     {
-        super(config, connection, scriptEngine);
+        super(config, connection, scriptEngine, router, threadId, threadCount);
     }
 
     @Override
-    protected void performInsert(Map<String, Object> nameValues) throws SQLException, ConfigurationException, ScriptException
+    protected void performInsert(Map<String, Object> nameValues)
+            throws SQLException, ConfigurationException, ScriptException, InterruptedException
     {
         if (config.isIgnoreNullPK())
         {
