@@ -2,7 +2,7 @@ package com.anjlab.csv2db;
 
 import java.util.concurrent.Callable;
 
-public abstract class VoidCallable<E extends Throwable> implements Callable<Void>
+public abstract class VoidCallable<E extends Exception> implements Callable<Void>
 {
     public abstract void run() throws E;
 
@@ -13,9 +13,9 @@ public abstract class VoidCallable<E extends Throwable> implements Callable<Void
         {
             run();
         }
-        catch (Throwable t)
+        catch (Exception e)
         {
-            throw new RuntimeException(t);
+            throw e;
         }
         return null;
     }
