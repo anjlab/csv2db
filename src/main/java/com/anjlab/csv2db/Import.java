@@ -2,15 +2,11 @@ package com.anjlab.csv2db;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.io.IOException;
-import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-
-import javax.script.ScriptException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -41,9 +37,7 @@ public class Import
 
     public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
 
-    public static void main(String[] args)
-            throws IOException, ClassNotFoundException, SQLException,
-            ScriptException, ConfigurationException, InterruptedException
+    public static void main(String[] args) throws Exception
     {
         Options options =
                 new Options()
@@ -201,14 +195,19 @@ public class Import
             {
                 return op.call();
             }
-            else
-            {
-                return timer.time(op);
-            }
+
+            return timer.time(op);
         }
         catch (Exception e)
         {
-            throw new RuntimeException(e);
+            throw runtimeException(e);
         }
+    }
+
+    public static RuntimeException runtimeException(Exception e)
+    {
+        return e instanceof RuntimeException
+                ? (RuntimeException) e
+                : new RuntimeException(e);
     }
 }

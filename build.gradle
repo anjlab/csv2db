@@ -30,6 +30,7 @@ dependencies {
     compile 'com.google.code.gson:gson:2.2.2'
     compile 'org.apache.commons:commons-lang3:3.1'
     compile 'io.dropwizard.metrics:metrics-core:3.1.2'
+    compile 'org.apache.commons:commons-compress:1.10'
 
     runtime 'commons-codec:commons-codec:1.10'
 }

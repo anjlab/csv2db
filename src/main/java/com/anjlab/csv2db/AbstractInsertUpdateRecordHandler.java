@@ -254,9 +254,28 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
         });
     }
 
-    private boolean addBatch(Map<String, Object> nameValues)
+    private boolean addBatch(Map<String, Object> nameValues) throws InterruptedException
     {
         String keys = config.joinPrimaryKeys(nameValues);
+
+        // Re-route early before strategy closed and while not all consumers were shutdown
+
+        // XXX Copy-paste:
+        // XXX Check duplicates should be performed on eval'ed/transformed values,
+        // right now it's partially true (i.e. eval'ed but not transformed values are used),
+        // and only if map function is declared in configuration
+        if (config.isIgnoreDuplicatePK())
+        {
+            // If needed re-route this to another handler based on keys hash
+
+            int partitionId = Math.abs(keys.hashCode() % threadCount);
+
+            if (partitionId != threadId)
+            {
+                router.dispatch(nameValues, partitionId);
+                return true;
+            }
+        }
 
         nameValuesBuffer.add(Pair.of(keys, nameValues));
 

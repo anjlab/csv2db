@@ -1,5 +1,7 @@
 package com.anjlab.csv2db;
 
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -11,8 +13,12 @@ import com.codahale.metrics.Timer;
 
 public class SharedBlockingQueueMediator implements Mediator
 {
+    private final int[] deadRouterProducers;
+
     private final BlockingQueue<Map<String, Object>>[] routerQueues;
     private final BlockingQueue<String[]> queue;
+
+    private final Map<String, Object> terminalNameValues;
     private final String terminalMessage;
 
     private final Timer queuePuts;
@@ -27,7 +33,12 @@ public class SharedBlockingQueueMediator implements Mediator
         // Each thread will take batch of lines with the size of batchSize from the queue,
         // that's why it's necessary to always have enough lines for those who read from its thread
         queue = new ArrayBlockingQueue<String[]>(config.getBatchSize() * numberOfThreads);
+
+        terminalNameValues = new HashMap<>();
         terminalMessage = UUID.randomUUID().toString();
+
+        deadRouterProducers = new int[numberOfThreads];
+        Arrays.fill(deadRouterProducers, 0);
 
         if (config.isIgnoreDuplicatePK())
         {
@@ -125,20 +136,23 @@ public class SharedBlockingQueueMediator implements Mediator
     @Override
     public Object take(int forThreadId) throws InterruptedException
     {
-        if (routerQueues != null && !routerQueues[forThreadId].isEmpty())
+        if (isInTerminalPhase(forThreadId))
         {
-            Timer timer = routerQueueTakes == null
-                    ? null
-                    : routerQueueTakes[forThreadId];
+            return terminalPhaseTake(forThreadId);
+        }
 
-            return Import.measureTime(timer, new Callable<Object>()
+        while (routerQueueHasData(forThreadId))
+        {
+            Object nameValues = takeFromRouter(forThreadId);
+
+            if (nameValues == terminalNameValues)
             {
-                @Override
-                public Object call() throws InterruptedException
-                {
-                    return routerQueues[forThreadId].take();
-                }
-            });
+                deadRouterProducers[forThreadId]++;
+            }
+            else
+            {
+                return nameValues;
+            }
         }
 
         String[] line = Import.measureTime(queueTakes, new Callable<String[]>()
@@ -150,9 +164,91 @@ public class SharedBlockingQueueMediator implements Mediator
             }
         });
 
-        return line.length != 0 && !terminalMessage.equals((line)[0])
-                ? line
-                : new String[0];
+        if (!isTerminalLine(line))
+        {
+            return line;
+        }
+
+        // Let other consumers know that producer has finished reading lines,
+        // and there won't be new records in the shared queue
+        producerDone();
+
+        if (isRouterEnabled())
+        {
+            deadRouterProducers[forThreadId]++;
+
+            // Notify other consumers that this thread has done processing shared queue,
+            // and is waiting for confirmation from other consumers that they don't have any
+            // messages for it
+            for (int i = 0; i < routerQueues.length; i++)
+            {
+                if (i != forThreadId)
+                {
+                    dispatch(terminalNameValues, i);
+                }
+            }
+
+            return terminalPhaseTake(forThreadId);
+        }
+
+        // Empty array is a terminal line
+        return new String[0];
+    }
+
+    private boolean isInTerminalPhase(int threadId)
+    {
+        return deadRouterProducers[threadId] > 0;
+    }
+
+    private Object takeFromRouter(int forThreadId)
+    {
+        Timer timer = routerQueueTakes == null
+                ? null
+                : routerQueueTakes[forThreadId];
+
+        return Import.measureTime(timer, new Callable<Object>()
+        {
+            @Override
+            public Object call() throws InterruptedException
+            {
+                return routerQueues[forThreadId].take();
+            }
+        });
+    }
+
+    private Object terminalPhaseTake(int forThreadId)
+    {
+        while (deadRouterProducers[forThreadId] < deadRouterProducers.length)
+        {
+            Object nameValues = takeFromRouter(forThreadId);
+
+            if (nameValues == terminalNameValues)
+            {
+                deadRouterProducers[forThreadId]++;
+            }
+            else
+            {
+                return nameValues;
+            }
+        }
+
+        // Empty array is a terminal line
+        return new String[0];
+    }
+
+    private boolean routerQueueHasData(int forThreadId)
+    {
+        return isRouterEnabled() && !routerQueues[forThreadId].isEmpty();
+    }
+
+    private boolean isRouterEnabled()
+    {
+        return routerQueues != null;
+    }
+
+    private boolean isTerminalLine(String[] line)
+    {
+        return line.length == 0 || terminalMessage.equals((line)[0]);
     }
 
     @Override
@@ -163,24 +259,25 @@ public class SharedBlockingQueueMediator implements Mediator
             @Override
             public void run() throws InterruptedException
             {
-                queue.put(new String[] { terminalMessage });
+                queue.put(new String[] { terminalMessage, String.valueOf(threadId) });
             }
         });
     }
 
     @Override
-    public void dispatch(final Map<String, Object> nameValues, final int threadId) throws InterruptedException
+    public void dispatch(final Map<String, Object> nameValues, final int forThreadId)
+            throws InterruptedException
     {
         Timer timer = routerQueuePuts == null
                 ? null
-                : routerQueuePuts[threadId];
+                : routerQueuePuts[forThreadId];
 
         Import.measureTime(timer, new VoidCallable<InterruptedException>()
         {
             @Override
             public void run() throws InterruptedException
             {
-                routerQueues[threadId].put(nameValues);
+                routerQueues[forThreadId].put(nameValues);
             }
         });
     }

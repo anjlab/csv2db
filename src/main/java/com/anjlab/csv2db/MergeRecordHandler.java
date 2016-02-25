@@ -1,5 +1,7 @@
 package com.anjlab.csv2db;
 
+import static com.anjlab.csv2db.Import.runtimeException;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -201,7 +203,7 @@ public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
         }
         catch (Exception e)
         {
-            throw new RuntimeException(e);
+            throw runtimeException(e);
         }
         finally
         {

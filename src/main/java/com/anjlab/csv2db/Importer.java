@@ -12,21 +12,22 @@ import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipException;
-import java.util.zip.ZipFile;
 
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveException;
+import org.apache.commons.compress.archivers.ArchiveInputStream;
+import org.apache.commons.compress.archivers.ArchiveStreamFactory;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.lang3.StringUtils;
 
@@ -50,7 +51,9 @@ public class Importer
     }
 
     public void performImport(String filename)
-            throws ClassNotFoundException, SQLException, IOException, ScriptException, ConfigurationException, InterruptedException
+            throws ClassNotFoundException, SQLException, IOException,
+            ScriptException, ConfigurationException, InterruptedException,
+            ArchiveException
     {
         performImport(filename, new FilenameFilter()
         {
@@ -64,7 +67,7 @@ public class Importer
 
     public void performImport(String filename, FilenameFilter filenameFilter)
             throws ClassNotFoundException, SQLException, IOException, ScriptException,
-            ConfigurationException, InterruptedException
+            ConfigurationException, InterruptedException, ArchiveException
     {
         final File inputFile = new File(filename);
 
@@ -78,7 +81,8 @@ public class Importer
         }
         else
         {
-            System.out.println("Importing from " + inputFile.getName() + "...");
+            logImportingFrom(inputFile.getName());
+
             performImport(new AutoCloseInputStream(new FileInputStream(inputFile)));
         }
     }
@@ -91,31 +95,45 @@ public class Importer
         {
             if (file.isFile() && filenameFilter.accept(null, file.getName()))
             {
-                System.out.println("Importing from " + file.getName() + "...");
+                logImportingFrom(file.getName());
+
                 performImport(new AutoCloseInputStream(new FileInputStream(file)));
             }
         }
     }
 
     private void importFromZip(final File inputFile, FilenameFilter filenameFilter)
-            throws ZipException, IOException, ClassNotFoundException,
-            SQLException, ScriptException, ConfigurationException, InterruptedException
+            throws IOException, ClassNotFoundException,
+            SQLException, ScriptException, ConfigurationException, InterruptedException, ArchiveException
     {
-        try (ZipFile zipFile = new ZipFile(inputFile))
+        try (ArchiveInputStream archiveInput = new ArchiveStreamFactory()
+                .createArchiveInputStream(
+                        FilenameUtils.getExtension(inputFile.getName()),
+                        new AutoCloseInputStream(new FileInputStream(inputFile))))
         {
-            Enumeration<? extends ZipEntry> entries = zipFile.entries();
-
-            while (entries.hasMoreElements())
+            while (true)
             {
-                ZipEntry entry = entries.nextElement();
-
-                if (!entry.isDirectory() && filenameFilter.accept(null, entry.getName()))
+                ArchiveEntry entry = archiveInput.getNextEntry();
+                if (entry != null)
                 {
-                    System.out.println("Importing from " + entry.getName() + "...");
-                    performImport(zipFile.getInputStream(entry));
+                    if (!entry.isDirectory() && filenameFilter.accept(null, entry.getName()))
+                    {
+                        logImportingFrom(entry.getName());
+
+                        performImport(archiveInput);
+                    }
+                }
+                else
+                {
+                    break;
                 }
             }
         }
+    }
+
+    private void logImportingFrom(String name)
+    {
+        System.out.println("\nImporting from '" + name + "'...");
     }
 
     public void performImport(InputStream input)
@@ -242,37 +260,17 @@ public class Importer
                 }
                 catch (Throwable t)
                 {
-                    if (t instanceof BatchUpdateException)
-                    {
-                        printBatchUpdateException((BatchUpdateException) t);
-                    }
-                    else if (t.getCause() instanceof BatchUpdateException)
-                    {
-                        printBatchUpdateException((BatchUpdateException) t.getCause());
-                    }
-                    else
-                    {
-                        t.printStackTrace(System.err);
-                    }
+                    printStackTrace(t);
                 }
                 finally
                 {
-                    try
-                    {
-                        mediator.consumerDone(threadId);
-                    }
-                    catch (InterruptedException e)
-                    {
-                        e.printStackTrace(System.err);
-                    }
-
                     try
                     {
                         strategy.close();
                     }
                     catch (Exception e)
                     {
-                        throw new RuntimeException("Problem has occurred while closing resources.", e);
+                        printStackTrace(e);
                     }
                 }
             }
@@ -360,6 +358,22 @@ public class Importer
                 }
 
                 return true;
+            }
+
+            private void printStackTrace(Throwable t)
+            {
+                if (t instanceof BatchUpdateException)
+                {
+                    printBatchUpdateException((BatchUpdateException) t);
+                }
+                else if (t.getCause() instanceof BatchUpdateException)
+                {
+                    printBatchUpdateException((BatchUpdateException) t.getCause());
+                }
+                else
+                {
+                    t.printStackTrace(System.err);
+                }
             }
 
             private void printBatchUpdateException(BatchUpdateException bue)

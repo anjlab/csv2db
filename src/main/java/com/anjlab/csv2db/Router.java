@@ -5,6 +5,6 @@ import java.util.Map;
 public interface Router
 {
 
-    void dispatch(Map<String, Object> nameValues, int threadId) throws InterruptedException;
+    void dispatch(Map<String, Object> nameValues, int forThreadId) throws InterruptedException;
 
 }

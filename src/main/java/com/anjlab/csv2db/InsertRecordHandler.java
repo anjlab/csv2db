@@ -174,7 +174,7 @@ public class InsertRecordHandler extends AbstractRecordHandler
 
     private void checkBatchExecution(int limit) throws SQLException
     {
-        if (batchExecutionDisabled)
+        if (batchExecutionDisabled || numberOfStatementsInBatch == 0)
         {
             return;
         }
