@@ -23,13 +23,15 @@ dependencies {
     testCompile 'junit:junit:4.8.2'
     testCompile 'org.apache.derby:derby:10.9.1.0'
     testCompile 'org.postgresql:postgresql:9.+'
-    
+
     compile 'net.sf.opencsv:opencsv:2.3'
     compile 'commons-cli:commons-cli:1.2'
     compile 'commons-io:commons-io:2.4'
     compile 'com.google.code.gson:gson:2.2.2'
     compile 'org.apache.commons:commons-lang3:3.1'
     compile 'io.dropwizard.metrics:metrics-core:3.1.2'
+
+    runtime 'commons-codec:commons-codec:1.10'
 }
 
 repositories {
