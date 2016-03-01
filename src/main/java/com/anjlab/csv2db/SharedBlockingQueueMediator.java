@@ -13,6 +13,7 @@ import com.codahale.metrics.Timer;
 
 public class SharedBlockingQueueMediator implements Mediator
 {
+    private final int[] deadQueueConsumers;
     private final int[] deadRouterProducers;
 
     private final BlockingQueue<Map<String, Object>>[] routerQueues;
@@ -39,6 +40,9 @@ public class SharedBlockingQueueMediator implements Mediator
 
         deadRouterProducers = new int[numberOfThreads];
         Arrays.fill(deadRouterProducers, 0);
+
+        deadQueueConsumers = new int[numberOfThreads];
+        Arrays.fill(deadQueueConsumers, 0);
 
         if (config.isIgnoreDuplicatePK())
         {
@@ -175,6 +179,7 @@ public class SharedBlockingQueueMediator implements Mediator
 
         if (isRouterEnabled())
         {
+            deadQueueConsumers[forThreadId]++;
             deadRouterProducers[forThreadId]++;
 
             // Notify other consumers that this thread has done processing shared queue,
@@ -197,7 +202,12 @@ public class SharedBlockingQueueMediator implements Mediator
 
     private boolean isInTerminalPhase(int threadId)
     {
-        return deadRouterProducers[threadId] > 0;
+        // Some other thread might completed earlier
+        // which could increment deadRouterProducers for this thread
+        // before it went through `producerDone` execution path.
+        // That's why we can not rely on deadRouterProducers here.
+
+        return deadQueueConsumers[threadId] > 0;
     }
 
     private Object takeFromRouter(int forThreadId)
