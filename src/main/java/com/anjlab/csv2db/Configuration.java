@@ -526,7 +526,7 @@ public class Configuration
 
         if (cmd.hasOption(USERNAME))
         {
-            connectionProperties.put("username", new StringLiteral(cmd.getOptionValue(USERNAME)));
+            connectionProperties.put("user", new StringLiteral(cmd.getOptionValue(USERNAME)));
         }
 
         if (cmd.hasOption(PASSWORD))
