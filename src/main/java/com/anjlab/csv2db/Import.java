@@ -146,6 +146,9 @@ public class Import
                 return accept;
             }
         });
+
+        // Print new line to allow graceful output composition from batch imports
+        System.out.println();
     }
 
     private static void printHelp(Options options)

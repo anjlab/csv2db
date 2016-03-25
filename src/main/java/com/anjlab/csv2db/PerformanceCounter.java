@@ -14,8 +14,9 @@ public class PerformanceCounter
 
     public PerformanceCounter()
     {
-        final long delay = 0;
         final long period = TimeUnit.SECONDS.toMillis(5);
+        // Skip first period
+        final long delay = period;
 
         new Timer(true).schedule(new TimerTask()
         {
