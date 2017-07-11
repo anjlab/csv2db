@@ -2,10 +2,8 @@ allprojects {
     apply plugin: 'eclipse'
 
     group = 'com.anjlab'
-    version = '3.2.4'
+    version = '3.2.5'
 }
-
-import org.gradle.plugins.ide.eclipse.model.*;
 
 apply plugin: 'java'
 apply plugin: 'maven'
@@ -33,6 +31,7 @@ dependencies {
     compile 'org.apache.commons:commons-compress:1.10'
 
     runtime 'commons-codec:commons-codec:1.10'
+    runtime 'joda-time:joda-time:2.9.9'
 }
 
 repositories {

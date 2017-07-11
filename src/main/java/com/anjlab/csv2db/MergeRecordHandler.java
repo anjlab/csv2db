@@ -1,16 +1,15 @@
 package com.anjlab.csv2db;
 
-import static com.anjlab.csv2db.Import.runtimeException;
+import com.codahale.metrics.Timer;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Map;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
-
-import com.codahale.metrics.Timer;
+import static com.anjlab.csv2db.Import.runtimeException;
 
 public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
 {
@@ -41,7 +40,7 @@ public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
             {
                 setClause.append(", ");
             }
-            setClause.append(targetTableColumnName).append(" = ");
+            setClause.append(config.escapeSqlName(targetTableColumnName)).append(" = ");
 
             ValueDefinition definition = config.getUpdateValues().get(targetTableColumnName);
 
@@ -61,12 +60,12 @@ public class MergeRecordHandler extends AbstractInsertUpdateRecordHandler
             {
                 setClause.append(", ");
             }
-            setClause.append(targetTableColumnName).append(" = ?");
+            setClause.append(config.escapeSqlName(targetTableColumnName)).append(" = ?");
         }
 
         StringBuilder updateClause =
                 new StringBuilder("UPDATE ")
-                        .append(config.getTargetTable())
+                        .append(config.escapeSqlName(config.getTargetTable()))
                         .append(" SET ")
                         .append(setClause)
                         .append(" WHERE ")

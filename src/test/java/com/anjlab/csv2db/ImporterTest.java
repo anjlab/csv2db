@@ -1,5 +1,10 @@
 package com.anjlab.csv2db;
 
+import com.anjlab.csv2db.Configuration.OperationMode;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -10,12 +15,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
-import org.apache.commons.lang3.StringUtils;
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.anjlab.csv2db.Configuration.OperationMode;
 
 public class ImporterTest
 {
@@ -31,7 +30,7 @@ public class ImporterTest
 
         Connection connection = importer.createConnection();
 
-        dropTableIfExists(connection);
+        dropTableIfExists(connection, "companies_house_records");
 
         connection.createStatement()
                 .executeUpdate(
@@ -118,7 +117,7 @@ public class ImporterTest
 
         Connection connection = importer.createConnection();
 
-        dropTableIfExists(connection);
+        dropTableIfExists(connection, "companies_house_records");
 
         connection.createStatement()
                 .executeUpdate(
@@ -178,28 +177,38 @@ public class ImporterTest
         Date today = withDate ? new Date(cal.getTimeInMillis()) : null;
 
         return Arrays.asList(
-                new Object[]{"! LTD", "08209948", "METROHOUSE 57 PEPPER ROAD", "HUNSLET", today},
-                new Object[]{"!BIG IMPACT GRAPHICS LIMITED", "07382019", "335 ROSDEN HOUSE", "372 OLD STREET", today},
-                new Object[]{"!NFERNO LTD.", "04753368", "FIRST FLOOR THAVIES INN HOUSE 3-4", "HOLBORN CIRCUS", today},
-                new Object[]{"!NSPIRED LTD", "SC421617", "12 BON ACCORD SQUARE", "", today},
-                new Object[]{"!OBAC INSTALLATIONS LIMITED", "07527820", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD", today},
-                new Object[]{"!OBAC UK LIMITED", "07687209", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD", today},
-                new Object[]{"!ST MEDIA SOUTHAMPTON LTD", "07904170", "10 NORTHBROOK HOUSE", "FREE STREET, BISHOPS WALTHAM", today},
-                new Object[]{"ALJOH B.V.", "SF000899", "ALEXANDER HINSHELWOOD BARR", "\"SHALIMAR\"", today},
-                new Object[]{"ALLEGIS SERVICES (INDIA) PRIVATE LIMITED", "FC027847", "\\54, 1ST MAIN ROAD", "3RD PHASE", today},
-                new Object[]{"APS DIRECT LIMITED", "05638208", "MANOR COURT CHAMBERS \\", "126 MANOR COURT ROAD", today});
+                new Object[] { "! LTD", "08209948", "METROHOUSE 57 PEPPER ROAD", "HUNSLET", today },
+                new Object[] { "!BIG IMPACT GRAPHICS LIMITED", "07382019", "335 ROSDEN HOUSE", "372 OLD STREET", today },
+                new Object[] { "!NFERNO LTD.", "04753368", "FIRST FLOOR THAVIES INN HOUSE 3-4", "HOLBORN CIRCUS", today },
+                new Object[] { "!NSPIRED LTD", "SC421617", "12 BON ACCORD SQUARE", "", today },
+                new Object[] { "!OBAC INSTALLATIONS LIMITED", "07527820", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD", today },
+                new Object[] { "!OBAC UK LIMITED", "07687209", "DEVONSHIRE HOUSE", "60 GOSWELL ROAD", today },
+                new Object[] { "!ST MEDIA SOUTHAMPTON LTD", "07904170", "10 NORTHBROOK HOUSE", "FREE STREET, BISHOPS WALTHAM", today },
+                new Object[] { "ALJOH B.V.", "SF000899", "ALEXANDER HINSHELWOOD BARR", "\"SHALIMAR\"", today },
+                new Object[] { "ALLEGIS SERVICES (INDIA) PRIVATE LIMITED", "FC027847", "\\54, 1ST MAIN ROAD", "3RD PHASE", today },
+                new Object[] { "APS DIRECT LIMITED", "05638208", "MANOR COURT CHAMBERS \\", "126 MANOR COURT ROAD", today });
     }
 
-    protected void assertRecordCount(Connection connection, List<Object[]> expectedData, boolean queryWithUpdateDate) throws SQLException
+    protected void assertRecordCount(Connection connection, List<Object[]> expectedData, boolean queryWithUpdateDate)
+            throws SQLException
+    {
+        assertRecordCount(connection, expectedData, queryWithUpdateDate, "");
+    }
+
+    protected void assertRecordCount(Connection connection, List<Object[]> expectedData, boolean queryWithUpdateDate, String sqlEscapeChar)
+            throws SQLException
     {
         String query;
         if (queryWithUpdateDate)
         {
-            query = "SELECT * FROM companies_house_records ORDER BY company_name, updated_at";
+            query = "SELECT * FROM " + sqlEscapeChar + "companies_house_records" + sqlEscapeChar +
+                    " ORDER BY " + sqlEscapeChar + "company_name" + sqlEscapeChar +
+                    ", " + sqlEscapeChar + "updated_at" + sqlEscapeChar;
         }
         else
         {
-            query = "SELECT * FROM companies_house_records ORDER BY company_name";
+            query = "SELECT * FROM " + sqlEscapeChar + "companies_house_records" + sqlEscapeChar +
+                    " ORDER BY " + sqlEscapeChar + "company_name" + sqlEscapeChar;
         }
         ResultSet resultSet;
         resultSet = connection.createStatement()
@@ -242,7 +251,7 @@ public class ImporterTest
 
         Connection connection = importer.createConnection();
 
-        dropTableIfExists(connection);
+        dropTableIfExists(connection, "companies_house_records");
 
         connection.createStatement()
                 .executeUpdate(
@@ -260,10 +269,10 @@ public class ImporterTest
         List<Object[]> expectedData = new ArrayList<Object[]>();
         for (Object[] row : dataset)
         {
-            expectedData.add(new Object[]{
+            expectedData.add(new Object[] {
                     row[0].toString().toLowerCase(),
                     row[1].toString(),
-                    StringUtils.reverse(row[1].toString())});
+                    StringUtils.reverse(row[1].toString()) });
         }
         assertRecordCount(connection, expectedData, false);
 
@@ -282,15 +291,15 @@ public class ImporterTest
 
         Connection connection = importer.createConnection();
 
-        dropTableIfExists(connection);
+        dropTableIfExists(connection, "\"companies_house_records\"");
 
         connection.createStatement()
                 .executeUpdate(
-                        "create table companies_house_records (" +
-                                "id timestamp not null," +
-                                "company_name varchar(160)," +
-                                "company_number varchar(8)," +
-                                "generated_value varchar(8)" +
+                        "create table \"companies_house_records\" (" +
+                                "\"id\" timestamp not null," +
+                                "\"company_name\" varchar(160)," +
+                                "\"company_number\" varchar(8)," +
+                                "\"generated_value\" varchar(8)" +
                                 ")");
 
         importer.performImport("src/test/resources/test-data.csv");
@@ -300,28 +309,28 @@ public class ImporterTest
         List<Object[]> expectedData = new ArrayList<Object[]>();
         for (Object[] row : dataset)
         {
-            expectedData.add(new Object[]{
+            expectedData.add(new Object[] {
                     row[0].toString().toLowerCase(),
                     row[1].toString(),
-                    StringUtils.reverse(row[1].toString())});
+                    StringUtils.reverse(row[1].toString()) });
 
             //  map function will call emit(nameValues) twice
-            expectedData.add(new Object[]{
+            expectedData.add(new Object[] {
                     row[0].toString().toLowerCase(),
                     row[1].toString(),
-                    StringUtils.reverse(row[1].toString())});
+                    StringUtils.reverse(row[1].toString()) });
         }
-        assertRecordCount(connection, expectedData, false);
+        assertRecordCount(connection, expectedData, false, "\"");
 
         connection.close();
     }
 
-    private void dropTableIfExists(Connection connection)
+    private void dropTableIfExists(Connection connection, final String tableName)
     {
         try
         {
             connection.createStatement()
-                    .executeUpdate("drop table companies_house_records");
+                    .executeUpdate("drop table " + tableName);
         }
         catch (SQLException e)
         {

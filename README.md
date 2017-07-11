@@ -91,6 +91,7 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
         "password": ""
     },
     "targetTable": "companies",
+    "sqlEscapeChar": "\"",
     "primaryKeys": [
         "companies_house_id"
     ],
@@ -203,6 +204,8 @@ The effect is that only the rows that don't already exist in the database will b
 `driverClass`, `connectionUrl` and `connectionProperties` are corresponding values from JDBC documentation for your database. Since version 2.1 it is possible to use <a href="#value-definitions">JavaScript function references</a> for connection properties.
 
 `targetTable` is the name of target table in database. The table should exist before import.
+
+`sqlEscapeChar` (optional) if specified then all table and column names will be escaped with this character, i.e. with `sqlEscapeChar: "\""` names of columns in generated SQL will be surrounded by quotes. Can be used when name of a column matches one of the SQL reserved words.
 
 `primaryKeys` is the set of primary keys on the table. Only used in `MERGE` and `INSERTONLY` modes.
 All `primaryKeys` should be present in `columnMappings` section, which means that CSV should contain `primaryKeys` data.

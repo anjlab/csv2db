@@ -1,16 +1,15 @@
 package com.anjlab.csv2db;
 
+import com.codahale.metrics.Timer;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
-
-import com.codahale.metrics.Timer;
 
 public class InsertRecordHandler extends AbstractRecordHandler
 {
@@ -35,7 +34,7 @@ public class InsertRecordHandler extends AbstractRecordHandler
 
         StringBuilder insertClause =
                 new StringBuilder("INSERT INTO ")
-                        .append(config.getTargetTable())
+                        .append(config.escapeSqlName(config.getTargetTable()))
                         .append(" (");
 
         StringBuilder valuesClause = new StringBuilder();
@@ -47,7 +46,7 @@ public class InsertRecordHandler extends AbstractRecordHandler
                 insertClause.append(", ");
                 valuesClause.append(", ");
             }
-            insertClause.append(targetTableColumnName);
+            insertClause.append(config.escapeSqlName(targetTableColumnName));
 
             ValueDefinition definition = config.getInsertValues().get(targetTableColumnName);
 
@@ -68,7 +67,7 @@ public class InsertRecordHandler extends AbstractRecordHandler
                 insertClause.append(", ");
                 valuesClause.append(", ");
             }
-            insertClause.append(targetTableColumnName);
+            insertClause.append(config.escapeSqlName(targetTableColumnName));
             valuesClause.append("?");
         }
 

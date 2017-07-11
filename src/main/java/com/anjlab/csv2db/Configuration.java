@@ -1,5 +1,19 @@
 package com.anjlab.csv2db;
 
+import au.com.bytecode.opencsv.CSVParser;
+import au.com.bytecode.opencsv.CSVReader;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
+import org.apache.commons.io.input.AutoCloseInputStream;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -7,27 +21,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Options;
-import org.apache.commons.io.input.AutoCloseInputStream;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import au.com.bytecode.opencsv.CSVParser;
-import au.com.bytecode.opencsv.CSVReader;
 
 public class Configuration
 {
@@ -128,6 +126,7 @@ public class Configuration
     private String connectionUrl;
     private Map<String, ValueDefinition> connectionProperties;
     private String targetTable;
+    private char sqlEscapeChar;
     private List<String> primaryKeys;
     /**
      * Map keys are zero-based column indices in CSV file.
@@ -351,6 +350,16 @@ public class Configuration
         this.targetTable = targetTable;
     }
 
+    public char getSqlEscapeChar()
+    {
+        return sqlEscapeChar;
+    }
+
+    public void setSqlEscapeChar(char sqlEscapeChar)
+    {
+        this.sqlEscapeChar = sqlEscapeChar;
+    }
+
     public OperationMode getOperationMode()
     {
         return operationMode;
@@ -557,5 +566,32 @@ public class Configuration
                     .append(String.valueOf(nameValues.get(primaryKeyColumnName)));
         }
         return builder.toString();
+    }
+
+    public String escapeSqlName(String name)
+    {
+        if (sqlEscapeChar == 0)
+        {
+            return name;
+        }
+
+        return sqlEscapeChar + name + sqlEscapeChar;
+    }
+
+    public List<String> escapeSqlNames(List<String> names)
+    {
+        if (sqlEscapeChar == 0)
+        {
+            return names;
+        }
+
+        ArrayList<String> list = new ArrayList<>(names.size());
+
+        for (String name : names)
+        {
+            list.add(escapeSqlName(name));
+        }
+
+        return list;
     }
 }

@@ -1,5 +1,12 @@
 package com.anjlab.csv2db;
 
+import com.codahale.metrics.Timer;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,15 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
-
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-
-import com.codahale.metrics.Timer;
 
 public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHandler
 {
@@ -66,9 +64,9 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
         {
             StringBuilder selectClause =
                     new StringBuilder("SELECT ")
-                            .append(StringUtils.join(getOrderedTableColumnNames(), ", "))
+                            .append(StringUtils.join(config.escapeSqlNames(getOrderedTableColumnNames()), ", "))
                             .append(" FROM ")
-                            .append(config.getTargetTable())
+                            .append(config.escapeSqlName(config.getTargetTable()))
                             .append(" WHERE ")
                             .append(buildWhereClause());
 
@@ -105,7 +103,7 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
                     whereClause.append(" AND ");
                 }
 
-                whereClause.append(columnName).append(" = ?");
+                whereClause.append(config.escapeSqlName(columnName)).append(" = ?");
             }
         }
 
