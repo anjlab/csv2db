@@ -1,3 +1,15 @@
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:3.0.11'
+    }
+}
+
 allprojects {
     apply plugin: 'eclipse'
 
@@ -39,13 +51,15 @@ repositories {
     mavenCentral()
 }
 
-task downloadJdbcDriver << {
-    dependencies {
-        if (!project.hasProperty("jdbcDriver")) {
-            ext.jdbcDriver = 'org.postgresql:postgresql:9.+'
+task downloadJdbcDriver {
+    doLast {
+        dependencies {
+            if (!project.hasProperty("jdbcDriver")) {
+                ext.jdbcDriver = 'org.postgresql:postgresql:9.+'
+            }
+
+            runtime jdbcDriver
         }
-        
-        runtime jdbcDriver
     }
 }
 
@@ -62,3 +76,11 @@ task copyShellScripts(type: Copy) {
 }
 
 jar { dependsOn copyDeps, copyShellScripts }
+
+
+apply plugin: 'com.bmuschko.docker-remote-api'
+
+task dockerBuildImage(type: DockerBuildImage) {
+    inputDir = projectDir
+    tags = [ 'anjlab/csv2db:latest', 'anjlab/csv2db:' + version ]
+}
