@@ -19,19 +19,19 @@ public class ValueDefinitionTest
         insertValues.put("column", new StringLiteral("constant"));
 
         Assert.assertEquals(
-                "{\"sqlEscapeChar\":\"\\u0000\",\"insertValues\":{\"column\":\"constant\"},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
+                "{\"sqlEscapeChar\":\"\\u0000\",\"insertValues\":{\"column\":\"constant\"},\"batchSize\":100,\"limit\":0,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
                 configuration.toJson());
 
         insertValues.put("column", new SqlLiteral("clause"));
 
         Assert.assertEquals(
-                "{\"sqlEscapeChar\":\"\\u0000\",\"insertValues\":{\"column\":{\"sql\":\"clause\"}},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
+                "{\"sqlEscapeChar\":\"\\u0000\",\"insertValues\":{\"column\":{\"sql\":\"clause\"}},\"batchSize\":100,\"limit\":0,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
                 configuration.toJson());
 
         insertValues.put("column", new FunctionReference("name"));
 
         Assert.assertEquals(
-                "{\"sqlEscapeChar\":\"\\u0000\",\"insertValues\":{\"column\":{\"function\":\"name\"}},\"batchSize\":100,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
+                "{\"sqlEscapeChar\":\"\\u0000\",\"insertValues\":{\"column\":{\"function\":\"name\"}},\"batchSize\":100,\"limit\":0,\"forceUpdate\":false,\"ignoreNullPK\":false,\"ignoreDuplicatePK\":false}",
                 configuration.toJson());
     }
 }

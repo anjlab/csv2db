@@ -1,5 +1,15 @@
 package com.anjlab.csv2db;
 
+import com.codahale.metrics.ConsoleReporter;
+import com.codahale.metrics.Metric;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.PosixParser;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.text.SimpleDateFormat;
@@ -8,21 +18,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.PosixParser;
-
-import com.codahale.metrics.ConsoleReporter;
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Timer;
-
 public class Import
 {
 
     public static final String BATCH_SIZE = "batchSize";
+    public static final String LIMIT = "limit";
     private static final String CONFIG = "config";
     private static final String HELP = "help";
     private static final String INCLUDE = "include";
@@ -51,6 +51,7 @@ public class Import
                         .addOption("t", NUMBER_OF_THREADS, true, "Number of threads"
                                 + " (default is number of processors available to JVM)")
                         .addOption("b", BATCH_SIZE, true, "Override batch size")
+                        .addOption("o", LIMIT, true, "Process first N rows and exit, 0 (default) for no limit.")
                         .addOption("v", VERBOSE, false, "Verbose output, useful for debugging")
                         .addOption("V", VERBOSE2, false, "Print some internal statistics every 1 minute")
                         .addOption("g", PROGRESS, false, "Display progress")

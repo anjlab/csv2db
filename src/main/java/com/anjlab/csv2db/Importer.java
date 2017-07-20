@@ -1,5 +1,19 @@
 package com.anjlab.csv2db;
 
+import au.com.bytecode.opencsv.CSVReader;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Timer.Context;
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveException;
+import org.apache.commons.compress.archivers.ArchiveInputStream;
+import org.apache.commons.compress.archivers.ArchiveStreamFactory;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.input.AutoCloseInputStream;
+import org.apache.commons.lang3.StringUtils;
+
+import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,23 +32,6 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
-import javax.script.ScriptContext;
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
-
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveException;
-import org.apache.commons.compress.archivers.ArchiveInputStream;
-import org.apache.commons.compress.archivers.ArchiveStreamFactory;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.input.AutoCloseInputStream;
-import org.apache.commons.lang3.StringUtils;
-
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.Timer.Context;
-
-import au.com.bytecode.opencsv.CSVReader;
 
 public class Importer
 {
@@ -169,6 +166,8 @@ public class Importer
                     csvOptions.isStrictQuotes(),
                     csvOptions.isIgnoreLeadingWhiteSpace());
 
+            long counter = 0;
+
             String[] nextLine;
             while ((nextLine = reader.readNext()) != null)
             {
@@ -178,6 +177,17 @@ public class Importer
                 if (perfCounter != null)
                 {
                     perfCounter.lineEnqueued();
+                }
+
+                if (config.getLimit() > 0)
+                {
+                    counter++;
+
+                    if (counter >= config.getLimit())
+                    {
+                        Import.logVerbose("Finishing importer early after " + counter + " lines");
+                        break;
+                    }
                 }
             }
             mediator.producerDone();

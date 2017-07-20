@@ -233,6 +233,8 @@ but these columns won't be mapped to target table columns.
 
 `batchSize` size of INSERT/UPDATE batches. Default value is 100.
 
+`limit` number of top records to process. Default is 0: no limit.
+
 `csvOptions` is a set of options supported by http://opencsv.sourceforge.net, here's the defaults:
 ``` json
 {

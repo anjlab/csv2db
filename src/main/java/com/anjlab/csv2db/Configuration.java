@@ -142,6 +142,7 @@ public class Configuration
     private List<String> scripting;
     private int batchSize = DEFAULT_BATCH_SIZE;
     private CSVOptions csvOptions;
+    private long limit;
     private boolean forceUpdate;
     private boolean ignoreNullPK;
     private boolean ignoreDuplicatePK;
@@ -291,6 +292,16 @@ public class Configuration
     public void setCsvOptions(CSVOptions csvOptions)
     {
         this.csvOptions = csvOptions;
+    }
+
+    public long getLimit()
+    {
+        return limit;
+    }
+
+    public void setLimit(long limit)
+    {
+        this.limit = limit;
     }
 
     public List<String> getPrimaryKeys()
@@ -546,6 +557,11 @@ public class Configuration
         if (cmd.hasOption(Import.BATCH_SIZE))
         {
             setBatchSize(Integer.parseInt(cmd.getOptionValue(Import.BATCH_SIZE, "1")));
+        }
+
+        if (cmd.hasOption(Import.LIMIT))
+        {
+            setLimit(Long.parseLong(cmd.getOptionValue(Import.LIMIT, "0")));
         }
 
         return this;
