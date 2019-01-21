@@ -14,7 +14,7 @@ allprojects {
     apply plugin: 'eclipse'
 
     group = 'com.anjlab'
-    version = '3.2.7'
+    version = '3.2.8'
 }
 
 apply plugin: 'java'
