@@ -183,7 +183,7 @@ public abstract class AbstractInsertUpdateRecordHandler extends AbstractRecordHa
                     if (!dataChanged)
                     {
                         // No need to update the data, because there's no changes
-                        break;
+                        continue;
                     }
                 }
 
