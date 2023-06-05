@@ -1,12 +1,16 @@
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import org.gradle.internal.jvm.Jvm
+
+repositories {
+    mavenCentral()
+}
 
 buildscript {
     repositories {
-        jcenter()
+        gradlePluginPortal()
     }
-
     dependencies {
-        classpath 'com.bmuschko:gradle-docker-plugin:3.0.11'
+        classpath 'com.bmuschko:gradle-docker-plugin:9.3.1'
     }
 }
 
@@ -14,15 +18,14 @@ allprojects {
     apply plugin: 'eclipse'
 
     group = 'com.anjlab'
-    version = '3.2.8'
+    version = '3.3.0'
 }
 
 apply plugin: 'java'
-apply plugin: 'maven'
 
-def javaVersion = org.gradle.internal.jvm.Jvm.current().javaVersion
+def javaVersion = Jvm.current().javaVersion
 
-sourceCompatibility = javaVersion.java8Compatible ? javaVersion.name : 1.7
+sourceCompatibility = javaVersion.java8Compatible ? javaVersion : 1.7
 targetCompatibility = sourceCompatibility
 
 println "Building for Java ${targetCompatibility}"
@@ -30,47 +33,40 @@ println "Building for Java ${targetCompatibility}"
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 dependencies {
-    testCompile 'junit:junit:4.8.2'
-    testCompile 'org.apache.derby:derby:10.9.1.0'
-    testCompile 'org.postgresql:postgresql:9.+'
+    testImplementation 'junit:junit:4.13.1'
+    testImplementation 'org.apache.derby:derby:10.14.2.0'
+    testImplementation 'org.postgresql:postgresql:42.6.0'
 
-    compile 'net.sf.opencsv:opencsv:2.3'
-    compile 'commons-cli:commons-cli:1.2'
-    compile 'commons-io:commons-io:2.4'
-    compile 'com.google.code.gson:gson:2.2.2'
-    compile 'org.apache.commons:commons-lang3:3.1'
-    compile 'io.dropwizard.metrics:metrics-core:3.1.2'
-    compile 'org.apache.commons:commons-compress:1.10'
-
-    runtime 'commons-codec:commons-codec:1.10'
-    runtime 'joda-time:joda-time:2.9.9'
-}
-
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
-task downloadJdbcDriver {
-    doLast {
-        dependencies {
-            if (!project.hasProperty("jdbcDriver")) {
-                ext.jdbcDriver = 'org.postgresql:postgresql:9.+'
-            }
-
-            runtime jdbcDriver
-        }
+    if (!project.hasProperty("jdbcDriver")) {
+        ext.jdbcDriver = 'org.postgresql:postgresql:42.6.0'
     }
+
+    implementation jdbcDriver
+
+    implementation 'net.sf.opencsv:opencsv:2.3'
+    implementation 'commons-cli:commons-cli:1.2'
+    implementation 'commons-io:commons-io:2.7'
+    implementation 'com.google.code.gson:gson:2.8.9'
+    implementation 'org.apache.commons:commons-lang3:3.1'
+    implementation 'io.dropwizard.metrics:metrics-core:3.1.2'
+    implementation 'org.apache.commons:commons-compress:1.21'
+
+    implementation 'commons-codec:commons-codec:1.13'
+    implementation 'joda-time:joda-time:2.9.9'
+
+    implementation 'org.openjdk.nashorn:nashorn-core:15.4'
 }
+
+tasks.register('downloadJdbcDriver')
 
 classes.dependsOn downloadJdbcDriver
 
-task copyDeps(type: Copy) {
+tasks.register('copyDeps', Copy) {
     into "$buildDir/libs/lib"
-    from configurations.runtime
+    from configurations.runtimeClasspath
 }
 
-task copyShellScripts(type: Copy) {
+tasks.register('copyShellScripts', Copy) {
     into "$buildDir/libs"
     from 'src/main/shell'
 }
@@ -80,7 +76,7 @@ jar { dependsOn copyDeps, copyShellScripts }
 
 apply plugin: 'com.bmuschko.docker-remote-api'
 
-task dockerBuildImage(type: DockerBuildImage) {
+tasks.register('dockerBuildImage', DockerBuildImage) {
     inputDir = projectDir
-    tags = [ 'anjlab/csv2db:latest', 'anjlab/csv2db:' + version ]
+    images.addAll(['anjlab/csv2db:latest', 'anjlab/csv2db:' + version])
 }

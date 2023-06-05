@@ -1,6 +1,6 @@
-FROM openjdk:8-jdk as builder
+FROM amazoncorretto:17-al2023-jdk as builder
 
-RUN apt-get -qq update && apt-get install -y \
+RUN yum update -y && yum install -y \
   git
 
 RUN mkdir /tmp/csv2db
@@ -9,7 +9,7 @@ COPY . .
 RUN ./gradlew clean build
 
 
-FROM openjdk:8-jre
+FROM amazoncorretto:17-al2023-jdk
 
 RUN mkdir -p /usr/share/csv2db
 COPY --from=builder /tmp/csv2db/build/libs/* /usr/share/csv2db/

@@ -242,7 +242,8 @@ public class Importer
                 StringBuilder emitFunctionDeclaration = new StringBuilder()
                         .append("function ").append(threadLocalEmit).append("(nameValues) {")
                         .append(threadLocalStrategy).append(".handleRecord(nameValues);")
-                        .append("}");
+                        .append("};")
+                        .append(threadLocalEmit);
 
                 try
                 {

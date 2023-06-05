@@ -142,7 +142,7 @@ CompanyName, CompanyNumber,RegAddress.CareOf,RegAddress.POBox,RegAddress.Address
 
 #### functions.js
 
-Since version 2.2.0 csv2db will use [Nashorn JavaScript engine](http://openjdk.java.net/projects/nashorn/) (built-in to Java 8+) and fallback to [Rhino](https://www.mozilla.org/rhino/) if running on Java 7 and below. There's no switch to control this behavior.
+Version 3.3.0 uses [Nashorn OpenJDK](https://github.com/openjdk/nashorn). Older versions used [Rhino](https://www.mozilla.org/rhino/) on Java 7 and below, this configuration is not supported anymore.
 
 Note: Nashorn is not a drop-in replacement for Rhino, so some things may stop working.
 
